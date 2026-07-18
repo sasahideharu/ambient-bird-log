@@ -87,8 +87,12 @@ def go_to_main():
 st.title("🎧 Ambient Bird Log 🐦")
 
 try:
-    # アプリ全体で使うために全データを一括取得してPandasへ
+    # 1. 検出データの取得
     response_all = supabase.table("detections").select("*").execute()
+    
+    # 🔥 2. NEW: 図鑑テーブル（画像URL）の一括取得
+    response_master = supabase.table("bird_master").select("*").execute()
+    bird_images = {row['common_name']: row['image_url'] for row in response_master.data} if response_master.data else {}
     
     if response_all.data:
         df_all = pd.DataFrame(response_all.data)
@@ -96,49 +100,62 @@ try:
         
         # --- A. メインページ（タブ表示） ---
         if st.session_state.page == 'main':
-            tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
+            bird_names = sorted(df_all['common_name'].dropna().unique().tolist())
+            tab_bird, tab_location, tab_admin = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理"])
 
-            # 【タブ1：鳥から探す（Page 1）】
+            # 【タブ1：鳥から探す】🔥 サムネイルUIへ進化 🔥
             with tab_bird:
                 st.markdown("### 🔍 和名で検索")
-                
-                # 登場が多い鳥順にカウントして並び替え
                 bird_counts = df_all['common_name'].value_counts()
-                
-                # 検索窓（オプションとして残す）
-                search_query = st.text_input("鳥の名前を入力...", placeholder="例：シジュウカラ")
-                
+                search_query = st.text_input("鳥の名前を入力...", placeholder="例：キビタキ、シジュウカラ")
                 st.markdown("**🦆 検出リスト（登場回数順）**")
-                # ボタンを並べてリスト化
+                
                 for bird_name, count in bird_counts.items():
                     if not search_query or search_query in bird_name:
-                        # ボタンを押すと「鳥から探すページ1-2」へ遷移
-                        st.button(
-                            f"{bird_name} ({count}件)", 
-                            key=f"btn_bird_{bird_name}", 
-                            on_click=go_to_bird_detail, 
-                            args=(bird_name,),
-                            use_container_width=True
-                        )
+                        with st.container():
+                            # 左(1)にサムネイル、右(3)にボタンの比率で分割
+                            col1, col2 = st.columns([1, 3])
+                            
+                            with col1:
+                                img_url = bird_images.get(bird_name)
+                                if img_url:
+                                    # 画像がある場合は美しくサムネイル表示
+                                    st.image(img_url, use_container_width=True)
+                                else:
+                                    # 画像がない場合のダークでクールなプレースホルダー
+                                    st.markdown(
+                                        "<div style='background-color:#1E1E1E; border-radius:8px; height:60px; display:flex; align-items:center; justify-content:center;'><span style='color:#8E8E93; font-size:12px;'>No Image</span></div>", 
+                                        unsafe_allow_html=True
+                                    )
+                                    
+                            with col2:
+                                # 位置を少し下げるための空行ハック
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                # ボタンを押すと「鳥から探すページ1-2」へ遷移
+                                st.button(
+                                    f"{bird_name} ({count}件)", 
+                                    key=f"btn_bird_{bird_name}", 
+                                    on_click=go_to_bird_detail, 
+                                    args=(bird_name,),
+                                    use_container_width=True
+                                )
+                        st.divider()
 
-            # 【タブ2：場所から探す（Page 2）】
+
+            # 【タブ2：場所から探す】（変更なし）
             with tab_location:
                 st.markdown("### 🗺️ 場所から探す")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
-                
                 if not df_loc.empty:
                     df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude'])
                     st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150)
                     st.divider()
-                    
                     st.markdown("**📍 過去の記録（場所別）**")
                     unique_locations = sorted(df_loc['location_name'].unique().tolist())
                     selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, label_visibility="collapsed")
-                    
                     if selected_loc:
                         loc_filtered = df_loc[df_loc['location_name'] == selected_loc].sort_values(by='record_date', ascending=False)
                         dates_at_loc = loc_filtered['record_date'].unique()
-                        
                         for date_str in dates_at_loc:
                             count = len(loc_filtered[loc_filtered['record_date'] == date_str])
                             with st.container():
@@ -149,8 +166,43 @@ try:
                                 with col2:
                                     st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
                             st.divider()
-                else:
-                    st.info("地図に表示できるデータがないぜ。")
+
+            # 【タブ3：画像管理（管理者用アップローダー）】
+            with tab_admin:
+                st.markdown("### 📷 野鳥画像のアップロード")
+                st.info("自らのレンズで捉えた最高のShotを、図鑑に登録するぜ。")
+                
+                upload_bird = st.selectbox("画像を登録する鳥を選んでくれ:", bird_names, key="upload_select")
+                uploaded_file = st.file_uploader("画像をドロップするか選択してくれ (JPG/PNG)", type=["jpg", "jpeg", "png"])
+                
+                if uploaded_file is not None and upload_bird:
+                    if st.button("🚀 Cloudへアップロード", use_container_width=True):
+                        with st.spinner("Uploading to Supabase..."):
+                            try:
+                                import uuid # ランダムな文字列を生成する標準ライブラリ
+                                
+                                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                                file_ext = uploaded_file.name.split('.')[-1]
+                                
+                                # 🔥 修正ポイント：日本語を排除し、完全な英数字のファイル名を生成
+                                # 例: img_20260718170230_a1b2c3d4.png
+                                safe_file_name = f"img_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
+                                
+                                # 1. Storageの 'bird-images' バケットに画像をアップロード
+                                supabase.storage.from_("bird-images").upload(safe_file_name, uploaded_file.getvalue())
+                                
+                                # 2. Public URLの取得
+                                public_image_url = supabase.storage.from_("bird-images").get_public_url(safe_file_name)
+                                
+                                # 3. bird_masterテーブルを更新（すでに画像があれば上書きするUPSERT）
+                                supabase.table("bird_master").upsert({
+                                    "common_name": upload_bird,
+                                    "image_url": public_image_url
+                                }).execute()
+                                
+                                st.success(f"🔥 {upload_bird} の画像をCloudに刻み込んだぜ！")
+                            except Exception as e:
+                                st.error(f"アップロードに失敗したぜ: {e}")
 
         # --- B. 鳥の詳細ページ (Page 1-2) ---
         elif st.session_state.page == 'bird_detail':
@@ -164,8 +216,14 @@ try:
                 st.markdown(f"## 🐦 {target_bird}")
                 st.caption(f"学名: *{scientific_name}*")
                 
-                # 画像のプレースホルダー（複数枚スライドの準備地）
-                st.info("🖼️ **Next Phase:** ここに鳥の画像（スライド）が表示される予定だ。")
+                # 🔥NEW🔥 図鑑テーブルから画像を引っ張ってくる
+                img_response = supabase.table("bird_master").select("image_url").eq("common_name", target_bird).execute()
+                if img_response.data and img_response.data[0]['image_url']:
+                    # 画像があれば美しく全幅で表示
+                    st.image(img_response.data[0]['image_url'], use_container_width=True)
+                else:
+                    st.info("🖼️ まだ画像が登録されていないぜ。「⚙️ 画像管理」タブからUploadしてくれ。")
+                    
                 st.divider()
                 
                 for index, row in bird_data.iterrows():
@@ -175,7 +233,6 @@ try:
                         duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
                         confidence_pct = int(row['confidence'] * 100)
                         
-                        # ハイパーリンク風のメタデータ表示
                         col_meta1, col_meta2 = st.columns([1, 1])
                         with col_meta1:
                             st.markdown(f"**信頼度:** `{confidence_pct}%`")
@@ -183,9 +240,8 @@ try:
                         with col_meta2:
                             st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
                             loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
-                            st.button(f"📍 {loc_name}", key=f"link_loc_{index}") # 場所詳細ページへの布石
+                            st.button(f"📍 {loc_name}", key=f"link_loc_{index}")
                         
-                        # プレイヤー
                         try:
                             with st.spinner("Loading..."):
                                 sliced_audio, actual_start, actual_end = get_sliced_remote_wav(
@@ -197,19 +253,17 @@ try:
                     st.divider()
 
         # --- C. 記録日詳細ページ (Page 3) ---
+        # （前回と全く同じなので省略せずにそのまま残しておいてくれ）
         elif st.session_state.page == 'date_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
-            
             target_date = st.session_state.selected_date
             st.markdown(f"## 📅 {target_date} の記録")
-            
             day_data = df_all[df_all['record_date'] == target_date]
             
             if not day_data.empty:
                 visited_locations = day_data['location_name'].dropna().unique()
                 loc_text = "、".join(visited_locations) if len(visited_locations) > 0 else "場所不明"
                 st.info(f"📍 **その日に行った場所:** {loc_text}")
-                
                 st.markdown(f"### 🐦 その日の鳥 (計 {len(day_data)} 件)")
                 day_data_sorted = day_data.sort_values(by='confidence', ascending=False)
                 
@@ -218,10 +272,9 @@ try:
                         col1, col2 = st.columns([3, 2])
                         wav_filename = row['wav_filename']
                         public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
-                        
                         with col1:
                             confidence_pct = int(row['confidence'] * 100)
-                            st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_{index}")
+                            st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}")
                             st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
                         with col2:
                             try:
