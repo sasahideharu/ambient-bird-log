@@ -110,32 +110,75 @@ try:
         if st.session_state.page == 'main':
             bird_names = sorted(df_all['common_name'].dropna().unique().tolist())
             
-            # 🔥 NEW: URLパラメータによるステルス判定
-            # ?admin=true がURLの末尾についているかチェックする
+            # 🔥 URLパラメータによるステルス判定
             is_admin = st.query_params.get("admin") == "true"
             
-            # 管理者かどうかで生成するタブの数を変える
             if is_admin:
                 tab_bird, tab_location, tab_admin = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理"])
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
-            # 【タブ1：鳥から探す】（※中身は今のままでOK）
+            # 【タブ1：鳥から探す】（サムネイルUI完全版）
             with tab_bird:
                 st.markdown("### 🔍 和名で検索")
-                # ... (これまでのタブ1のコード) ...
+                bird_counts = df_all['common_name'].value_counts()
+                search_query = st.text_input("鳥の名前を入力...", placeholder="例：キビタキ、シジュウカラ")
+                st.markdown("**🦆 検出リスト（登場回数順）**")
+                
+                for bird_name, count in bird_counts.items():
+                    if not search_query or search_query in bird_name:
+                        with st.container():
+                            col1, col2 = st.columns([1, 3])
+                            with col1:
+                                img_url = bird_images.get(bird_name)
+                                if img_url:
+                                    st.image(img_url, use_container_width=True)
+                                else:
+                                    st.markdown(
+                                        "<div style='background-color:#1E1E1E; border-radius:8px; height:60px; display:flex; align-items:center; justify-content:center;'><span style='color:#8E8E93; font-size:12px;'>No Image</span></div>", 
+                                        unsafe_allow_html=True
+                                    )
+                            with col2:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                st.button(
+                                    f"{bird_name} ({count}件)", 
+                                    key=f"btn_bird_{bird_name}", 
+                                    on_click=go_to_bird_detail, 
+                                    args=(bird_name,),
+                                    use_container_width=True
+                                )
+                        st.divider()
 
-            # 【タブ2：場所から探す】（※中身は今のままでOK）
+            # 【タブ2：場所から探す】（地図とリストの完全版）
             with tab_location:
                 st.markdown("### 🗺️ 場所から探す")
-                # ... (これまでのタブ2のコード) ...
+                df_loc = df_all.dropna(subset=['latitude', 'longitude'])
+                if not df_loc.empty:
+                    df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude'])
+                    st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150)
+                    st.divider()
+                    st.markdown("**📍 過去の記録（場所別）**")
+                    unique_locations = sorted(df_loc['location_name'].unique().tolist())
+                    selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, label_visibility="collapsed")
+                    if selected_loc:
+                        loc_filtered = df_loc[df_loc['location_name'] == selected_loc].sort_values(by='record_date', ascending=False)
+                        dates_at_loc = loc_filtered['record_date'].unique()
+                        for date_str in dates_at_loc:
+                            count = len(loc_filtered[loc_filtered['record_date'] == date_str])
+                            with st.container():
+                                col1, col2 = st.columns([3, 1])
+                                with col1:
+                                    st.markdown(f"### 📅 {date_str}")
+                                    st.caption(f"🎧 検出: {count} 件")
+                                with col2:
+                                    st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
+                            st.divider()
 
-            # 【タブ3：画像管理（管理者用アップローダー）】🔥 NEW: is_adminの時だけ実行
+            # 【タブ3：画像管理】（管理者用ステルスアップローダー）
             if is_admin:
                 with tab_admin:
                     st.markdown("### 📷 野鳥画像のアップロード")
                     st.info("自らのレンズで捉えた最高のShotを、図鑑に登録するぜ。")
-                    
                     upload_bird = st.selectbox("画像を登録する鳥を選んでくれ:", bird_names, key="upload_select")
                     uploaded_file = st.file_uploader("画像をドロップするか選択してくれ (JPG/PNG)", type=["jpg", "jpeg", "png"])
                     
@@ -159,7 +202,8 @@ try:
                                     st.success(f"🔥 {upload_bird} の画像をCloudに刻み込んだぜ！")
                                 except Exception as e:
                                     st.error(f"アップロードに失敗したぜ: {e}")
-
+                                    
+                                    
         # --- B. 鳥の詳細ページ (Page 1-2) ---
         elif st.session_state.page == 'bird_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
