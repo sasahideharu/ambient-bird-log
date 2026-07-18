@@ -67,87 +67,72 @@ if 'page' not in st.session_state:
     st.session_state.page = 'main'
 if 'selected_date' not in st.session_state:
     st.session_state.selected_date = None
+if 'selected_bird' not in st.session_state:
+    st.session_state.selected_bird = None
 
-def go_to_detail(date_str):
-    """詳細ページへ切り替える関数"""
-    st.session_state.page = 'detail'
+def go_to_date_detail(date_str):
+    st.session_state.page = 'date_detail'
     st.session_state.selected_date = date_str
 
+def go_to_bird_detail(bird_name):
+    st.session_state.page = 'bird_detail'
+    st.session_state.selected_bird = bird_name
+
 def go_to_main():
-    """メインページへ戻る関数"""
     st.session_state.page = 'main'
     st.session_state.selected_date = None
+    st.session_state.selected_bird = None
 
 # --- 3. メインUI ---
 st.title("🎧 Ambient Bird Log 🐦")
 
 try:
-    response_birds = supabase.table("detections").select("common_name").execute()
+    # アプリ全体で使うために全データを一括取得してPandasへ
+    response_all = supabase.table("detections").select("*").execute()
     
-    if response_birds.data:
+    if response_all.data:
+        df_all = pd.DataFrame(response_all.data)
+        df_all['record_date'] = df_all['wav_filename'].apply(extract_date)
+        
         # --- A. メインページ（タブ表示） ---
         if st.session_state.page == 'main':
-            bird_names = sorted(list(set([row['common_name'] for row in response_birds.data if row['common_name']])))
             tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
-            # 【タブ1：鳥から探す】
+            # 【タブ1：鳥から探す（Page 1）】
             with tab_bird:
-                st.markdown("### 和名で検索")
-                selected_bird = st.selectbox("鳥の和名を選択してくれ:", bird_names, label_visibility="collapsed")
+                st.markdown("### 🔍 和名で検索")
+                
+                # 登場が多い鳥順にカウントして並び替え
+                bird_counts = df_all['common_name'].value_counts()
+                
+                # 検索窓（オプションとして残す）
+                search_query = st.text_input("鳥の名前を入力...", placeholder="例：シジュウカラ")
+                
+                st.markdown("**🦆 検出リスト（登場回数順）**")
+                # ボタンを並べてリスト化
+                for bird_name, count in bird_counts.items():
+                    if not search_query or search_query in bird_name:
+                        # ボタンを押すと「鳥から探すページ1-2」へ遷移
+                        st.button(
+                            f"{bird_name} ({count}件)", 
+                            key=f"btn_bird_{bird_name}", 
+                            on_click=go_to_bird_detail, 
+                            args=(bird_name,),
+                            use_container_width=True
+                        )
 
-                if selected_bird:
-                    response_data = supabase.table("detections")\
-                        .select("*")\
-                        .eq("common_name", selected_bird)\
-                        .order("confidence", desc=True)\
-                        .execute()
-                        
-                    filtered_data = response_data.data
-                    st.markdown(f"**{selected_bird} の検出リスト (計 {len(filtered_data)} 件)**")
-                    
-                    for row in filtered_data:
-                        with st.container():
-                            col1, col2 = st.columns([3, 2])
-                            wav_filename = row['wav_filename']
-                            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
-                            
-                            with col1:
-                                confidence_pct = int(row['confidence'] * 100)
-                                record_date = extract_date(wav_filename)
-                                st.markdown(f"**{selected_bird}** / `{row['scientific_name']}`")
-                                st.caption(f"📅 **記録日:** {record_date} | ⏱️ 検出区間: {row['start_sec']}s 〜 {row['end_sec']}s")
-                                st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
-                            
-                            with col2:
-                                try:
-                                    with st.spinner("Loading..."):
-                                        sliced_audio, actual_start, actual_end = get_sliced_remote_wav(
-                                            public_url, float(row['start_sec']), float(row['end_sec'])
-                                        )
-                                    st.audio(sliced_audio, format="audio/wav")
-                                except Exception as e:
-                                    st.error(f"ロードエラー: {e}")
-                        st.divider()
-
-            # 【タブ2：場所から探す】
+            # 【タブ2：場所から探す（Page 2）】
             with tab_location:
                 st.markdown("### 🗺️ 場所から探す")
-                response_loc = supabase.table("detections")\
-                    .select("wav_filename, location_name, latitude, longitude")\
-                    .not_.is_("latitude", "null")\
-                    .execute()
+                df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 
-                if response_loc.data:
-                    df_loc = pd.DataFrame(response_loc.data)
-                    df_loc['record_date'] = df_loc['wav_filename'].apply(extract_date)
-                    
+                if not df_loc.empty:
                     df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude'])
-                    st.markdown("**🌎 フィールドマップ**")
                     st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150)
                     st.divider()
                     
                     st.markdown("**📍 過去の記録（場所別）**")
-                    unique_locations = sorted(df_loc['location_name'].dropna().unique().tolist())
+                    unique_locations = sorted(df_loc['location_name'].unique().tolist())
                     selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, label_visibility="collapsed")
                     
                     if selected_loc:
@@ -160,39 +145,72 @@ try:
                                 col1, col2 = st.columns([3, 1])
                                 with col1:
                                     st.markdown(f"### 📅 {date_str}")
-                                    st.caption(f"🎧 検出された野鳥のBeat: {count} 件")
+                                    st.caption(f"🎧 検出: {count} 件")
                                 with col2:
-                                    # ボタンを押すと Session State が切り替わり、詳細ページへ飛ぶ
-                                    st.button("詳細を見る", on_click=go_to_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
+                                    st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
                             st.divider()
                 else:
-                    st.info("まだ地図に表示できる位置情報データがないぜ。")
+                    st.info("地図に表示できるデータがないぜ。")
 
-        # --- B. 記録日詳細ページ ---
-        elif st.session_state.page == 'detail':
-            # 戻るボタン
+        # --- B. 鳥の詳細ページ (Page 1-2) ---
+        elif st.session_state.page == 'bird_detail':
+            st.button("⬅️ メインに戻る", on_click=go_to_main)
+            
+            target_bird = st.session_state.selected_bird
+            bird_data = df_all[df_all['common_name'] == target_bird].sort_values(by='confidence', ascending=False)
+            
+            if not bird_data.empty:
+                scientific_name = bird_data.iloc[0]['scientific_name']
+                st.markdown(f"## 🐦 {target_bird}")
+                st.caption(f"学名: *{scientific_name}*")
+                
+                # 画像のプレースホルダー（複数枚スライドの準備地）
+                st.info("🖼️ **Next Phase:** ここに鳥の画像（スライド）が表示される予定だ。")
+                st.divider()
+                
+                for index, row in bird_data.iterrows():
+                    with st.container():
+                        wav_filename = row['wav_filename']
+                        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
+                        duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
+                        confidence_pct = int(row['confidence'] * 100)
+                        
+                        # ハイパーリンク風のメタデータ表示
+                        col_meta1, col_meta2 = st.columns([1, 1])
+                        with col_meta1:
+                            st.markdown(f"**信頼度:** `{confidence_pct}%`")
+                            st.markdown(f"**再生時間:** `{duration}秒`")
+                        with col_meta2:
+                            st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
+                            loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
+                            st.button(f"📍 {loc_name}", key=f"link_loc_{index}") # 場所詳細ページへの布石
+                        
+                        # プレイヤー
+                        try:
+                            with st.spinner("Loading..."):
+                                sliced_audio, actual_start, actual_end = get_sliced_remote_wav(
+                                    public_url, float(row['start_sec']), float(row['end_sec'])
+                                )
+                            st.audio(sliced_audio, format="audio/wav")
+                        except Exception as e:
+                            st.error(f"ロードエラー: {e}")
+                    st.divider()
+
+        # --- C. 記録日詳細ページ (Page 3) ---
+        elif st.session_state.page == 'date_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
             
             target_date = st.session_state.selected_date
             st.markdown(f"## 📅 {target_date} の記録")
             
-            # 全データを取得し、Python側で日付フィルタリングを行う
-            response_all = supabase.table("detections").select("*").execute()
-            df_all = pd.DataFrame(response_all.data)
-            df_all['record_date'] = df_all['wav_filename'].apply(extract_date)
-            
-            # 選択された日のデータのみを抽出
             day_data = df_all[df_all['record_date'] == target_date]
             
             if not day_data.empty:
-                # その日に行った場所を抽出
                 visited_locations = day_data['location_name'].dropna().unique()
                 loc_text = "、".join(visited_locations) if len(visited_locations) > 0 else "場所不明"
                 st.info(f"📍 **その日に行った場所:** {loc_text}")
                 
                 st.markdown(f"### 🐦 その日の鳥 (計 {len(day_data)} 件)")
-                
-                # 信頼度が高い順にソートしてカードを表示
                 day_data_sorted = day_data.sort_values(by='confidence', ascending=False)
                 
                 for index, row in day_data_sorted.iterrows():
@@ -203,10 +221,8 @@ try:
                         
                         with col1:
                             confidence_pct = int(row['confidence'] * 100)
-                            st.markdown(f"**{row['common_name']}** / `{row['scientific_name']}`")
+                            st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_{index}")
                             st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
-                            st.caption(f"⏱️ 検出区間: {row['start_sec']}s 〜 {row['end_sec']}s")
-                        
                         with col2:
                             try:
                                 with st.spinner("Loading..."):
@@ -217,8 +233,6 @@ try:
                             except Exception as e:
                                 st.error(f"ロードエラー: {e}")
                     st.divider()
-            else:
-                st.warning("この日のデータは見つからなかったぜ。")
 
     else:
         st.warning("クラウドのデータベースにデータがないぜ。")
