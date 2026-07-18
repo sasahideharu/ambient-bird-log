@@ -94,13 +94,11 @@ def go_to_main():
 # スマホで折り返さないスマートなタイトル
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack: 全体の空欄を削ぎ落とし、スマホでも強制3列にする究極の魔法
+# 🔥 GEʍlNEʍ's CSS Hack: 全ブラウザ対応の完全なる強制横並びロジック
 st.markdown("""
     <style>
-    /* 要素間の隙間を極限まで詰める */
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     
-    /* 📸 サムネイル画像を強制的に「正方形（1:1）」に */
     img { 
         border-radius: 6px; 
         object-fit: cover !important; 
@@ -109,33 +107,24 @@ st.markdown("""
         margin-bottom: 5px;
     }
     
-    /* 📱 スマホ画面（640px以下）でも、3列を絶対に崩さないための強制ロジック */
+    /* 📱 スマホ画面の時にStreamlitの縦積み機能を完全に無効化する */
     @media (max-width: 640px) {
-        /* 「3つのカラムを持つブロック」だけを狙い撃ち */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) {
+        div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
         }
-        /* 狙い撃ちしたブロック内のカラム幅を強制的に約33%にする */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) > div[data-testid="column"] {
-            width: 33.33% !important;
-            flex: 1 1 33.33% !important;
-            min-width: 30% !important;
-            padding: 0 3px !important; /* スマホ用の極小マージン */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            min-width: 0 !important;
+            padding: 0 3px !important;
         }
-        /* スマホ時のボタンテキストサイズ微調整 */
         button p { font-size: 10px !important; }
     }
     
-    /* PC/スマホ共通のボタンテキスト縮小 */
-    button p {
-        font-size: 12px !important;
-    }
+    button p { font-size: 12px !important; }
     </style>
 """, unsafe_allow_html=True)
 
 try:
-    # データベースから全情報を取得
     response_all = supabase.table("detections").select("*").execute()
     response_master = supabase.table("bird_master").select("*").execute()
     bird_images = {row['common_name']: row['image_url'] for row in response_master.data} if response_master.data else {}
@@ -147,8 +136,6 @@ try:
         # --- A. メインページ（タブ表示） ---
         if st.session_state.page == 'main':
             bird_names = sorted(df_all['common_name'].dropna().unique().tolist())
-            
-            # URLパラメータによるステルス判定
             is_admin = st.query_params.get("admin") == "true"
             
             if is_admin:
@@ -156,7 +143,7 @@ try:
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
-            # 【タブ1：鳥から探す】 (Slide 5 クリーンUI & 3カラムグリッド)
+            # 【タブ1：鳥から探す】 (Slide 5: 3カラムグリッド)
             with tab_bird:
                 search_query = st.text_input(
                     "検索窓", 
