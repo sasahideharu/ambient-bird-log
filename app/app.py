@@ -91,16 +91,13 @@ def go_to_main():
     st.session_state.selected_loc = None
 
 # --- 3. メインUI ---
-# 📍 タイトルの中央揃え
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
 # 🔥 GEʍlNEʍ's CSS Hack
 st.markdown("""
     <style>
-    /* 全体の隙間をゼロにしてタイトに詰める */
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     
-    /* 📍 画像とボタンに極小の空白 (4px) */
     img { 
         border-radius: 6px; 
         object-fit: cover !important; 
@@ -109,7 +106,6 @@ st.markdown("""
         margin-bottom: 4px !important;
     }
     
-    /* スマホ時の3カラム強制レイアウト */
     @media (max-width: 640px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -147,12 +143,11 @@ try:
 
             # 【タブ1：鳥から探す】
             with tab_bird:
+                # 📍 修正点: label_visibility="collapsed" で 0% と 100% のラベルを消し去る
+                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, label_visibility="collapsed")
                 
-                # 📍 NEW: 信頼度のフェードフィルタを追加[span_2](start_span)[span_2](end_span)
-                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, format="%d%%")
-                
-                # スライダーと検索窓の間の空白
-                st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 15px; line-height: 15px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
+                # スライダーの表示値を手動で配置して、上のタイトルと被らないように調整
+                st.markdown(f"<div style='text-align: right; margin-top: -10px; margin-bottom: 10px; font-size: 14px;'>信頼度: {min_confidence}%</div>", unsafe_allow_html=True)
                 
                 search_query = st.text_input(
                     "検索窓", 
@@ -160,14 +155,10 @@ try:
                     placeholder="和名で検索" 
                 )
                 
-                # 🔥 修正点1: 検索窓と画像の空白
-                # （透明な文字を置いて物理的に30pxの高さを強制確保する究極のハック）
-                st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 30px; line-height: 30px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
+                # 📍 空白ハックをさらに強化 (30px -> 35px)
+                st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 35px; line-height: 35px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
                 
-                # 📍 NEW: スライダーで設定した信頼度(%)を 0.0〜1.0 の小数に変換してデータをフィルタリング[span_3](start_span)[span_3](end_span)
                 df_filtered = df_all[df_all['confidence'] >= (min_confidence / 100.0)]
-                
-                # フィルタリングされたデータからカウントを計算
                 bird_counts = df_filtered['common_name'].value_counts()
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
                 
@@ -182,7 +173,6 @@ try:
                             if img_url:
                                 st.image(img_url, use_container_width=True)
                             else:
-                                # 📍 No Imageを写真と同じサイズ(1:1)にし、極小の空白(margin-bottom: 4px)を設定
                                 st.markdown(
                                     "<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", 
                                     unsafe_allow_html=True
@@ -192,11 +182,9 @@ try:
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
                         
-                        # 🔥 修正点2: 和名(ボタン)と下の段の画像の空白
-                        # （透明な文字を置いて物理的に25pxの行間を強制確保する）
                         st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 25px; line-height: 25px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
 
-            # 【タブ2：場所から探す】
+            # --- (その他ページは変更なし) ---
             with tab_location:
                 st.markdown("### 🗺️ 場所から探す")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
@@ -220,7 +208,7 @@ try:
                                 with col2:
                                     st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
                             st.divider()
-
+            
             # 【タブ3：画像管理（管理者ステルス用）】
             if is_admin:
                 with tab_admin:
