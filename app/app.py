@@ -91,15 +91,16 @@ def go_to_main():
     st.session_state.selected_loc = None
 
 # --- 3. メインUI ---
-# 📍 修正点1: タイトルの中央揃え (text-align: center)
+# 📍 タイトルの中央揃え
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack: レイアウトの完全制御
+# 🔥 GEʍlNEʍ's CSS Hack
 st.markdown("""
     <style>
+    /* 全体の隙間をゼロにしてタイトに詰める */
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     
-    /* 📍 修正点3: 画像とボタンに極小の空白 (margin-bottom: 4px) */
+    /* 📍 画像とボタンに極小の空白 (4px) */
     img { 
         border-radius: 6px; 
         object-fit: cover !important; 
@@ -108,6 +109,7 @@ st.markdown("""
         margin-bottom: 4px !important;
     }
     
+    /* スマホ時の3カラム強制レイアウト */
     @media (max-width: 640px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -151,8 +153,9 @@ try:
                     placeholder="和名で検索" 
                 )
                 
-                # 📍 修正点2: 検索窓と画像に少しの空白 (heightを20pxに拡大)
-                st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+                # 🔥 修正点1: 検索窓と画像の空白
+                # （透明な文字を置いて物理的に30pxの高さを強制確保する究極のハック）
+                st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 30px; line-height: 30px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
                 
                 bird_counts = df_all['common_name'].value_counts()
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
@@ -168,7 +171,7 @@ try:
                             if img_url:
                                 st.image(img_url, use_container_width=True)
                             else:
-                                # 📍 修正点3 & 5: No Imageを写真と同じサイズ(width: 100%)にし、極小の空白(margin-bottom: 4px)を設定
+                                # 📍 No Imageを写真と同じサイズ(1:1)にし、極小の空白(margin-bottom: 4px)を設定
                                 st.markdown(
                                     "<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", 
                                     unsafe_allow_html=True
@@ -178,8 +181,9 @@ try:
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
                         
-                        # 📍 修正点4: 行間の空白 (高さ15pxに調整)
-                        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+                        # 🔥 修正点2: 和名(ボタン)と下の段の画像の空白
+                        # （透明な文字を置いて物理的に25pxの行間を強制確保する）
+                        st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 25px; line-height: 25px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
 
             # 【タブ2：場所から探す】
             with tab_location:
