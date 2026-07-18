@@ -149,7 +149,7 @@ try:
             with tab_bird:
                 
                 # 📍 NEW: 信頼度のフェードフィルタを追加[span_2](start_span)[span_2](end_span)
-                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=0, format="%d%%")
+                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, format="%d%%")
                 
                 # スライダーと検索窓の間の空白
                 st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 15px; line-height: 15px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
