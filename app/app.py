@@ -147,6 +147,13 @@ try:
 
             # 【タブ1：鳥から探す】
             with tab_bird:
+                
+                # 📍 NEW: 信頼度のフェードフィルタを追加[span_2](start_span)[span_2](end_span)
+                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=0, format="%d%%")
+                
+                # スライダーと検索窓の間の空白
+                st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 15px; line-height: 15px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
+                
                 search_query = st.text_input(
                     "検索窓", 
                     label_visibility="collapsed", 
@@ -157,7 +164,11 @@ try:
                 # （透明な文字を置いて物理的に30pxの高さを強制確保する究極のハック）
                 st.markdown("<div style='color: transparent; pointer-events: none; font-size: 1px; min-height: 30px; line-height: 30px; margin: 0; padding: 0;'>_</div>", unsafe_allow_html=True)
                 
-                bird_counts = df_all['common_name'].value_counts()
+                # 📍 NEW: スライダーで設定した信頼度(%)を 0.0〜1.0 の小数に変換してデータをフィルタリング[span_3](start_span)[span_3](end_span)
+                df_filtered = df_all[df_all['confidence'] >= (min_confidence / 100.0)]
+                
+                # フィルタリングされたデータからカウントを計算
+                bird_counts = df_filtered['common_name'].value_counts()
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
                 
                 cols = st.columns(3)
