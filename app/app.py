@@ -91,17 +91,16 @@ def go_to_main():
     st.session_state.selected_loc = None
 
 # --- 3. メインUI ---
-
-# タイトルがスマホで折り返さないように、st.titleではなくHTMLでスマートなサイズに調整
+# スマホで折り返さないスマートなタイトル
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack: グリッドレイアウト用の究極のスタイル
+# 🔥 GEʍlNEʍ's CSS Hack: 全体の空欄を削ぎ落とし、スマホでも強制3列にする究極の魔法
 st.markdown("""
     <style>
     /* 要素間の隙間を極限まで詰める */
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     
-    /* 📸 サムネイル画像を強制的に「正方形（1:1）」にし、はみ出た部分を美しくカット */
+    /* 📸 サムネイル画像を強制的に「正方形（1:1）」に */
     img { 
         border-radius: 6px; 
         object-fit: cover !important; 
@@ -110,14 +109,33 @@ st.markdown("""
         margin-bottom: 5px;
     }
     
-    /* 🔘 ボタン内のテキストを小さくして、狭いカラム内に収める */
+    /* 📱 スマホ画面（640px以下）でも、3列を絶対に崩さないための強制ロジック */
+    @media (max-width: 640px) {
+        /* 「3つのカラムを持つブロック」だけを狙い撃ち */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        /* 狙い撃ちしたブロック内のカラム幅を強制的に約33%にする */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3)) > div[data-testid="column"] {
+            width: 33.33% !important;
+            flex: 1 1 33.33% !important;
+            min-width: 30% !important;
+            padding: 0 3px !important; /* スマホ用の極小マージン */
+        }
+        /* スマホ時のボタンテキストサイズ微調整 */
+        button p { font-size: 10px !important; }
+    }
+    
+    /* PC/スマホ共通のボタンテキスト縮小 */
     button p {
-        font-size: 11px !important;
+        font-size: 12px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 try:
+    # データベースから全情報を取得
     response_all = supabase.table("detections").select("*").execute()
     response_master = supabase.table("bird_master").select("*").execute()
     bird_images = {row['common_name']: row['image_url'] for row in response_master.data} if response_master.data else {}
@@ -129,6 +147,8 @@ try:
         # --- A. メインページ（タブ表示） ---
         if st.session_state.page == 'main':
             bird_names = sorted(df_all['common_name'].dropna().unique().tolist())
+            
+            # URLパラメータによるステルス判定
             is_admin = st.query_params.get("admin") == "true"
             
             if is_admin:
@@ -136,7 +156,7 @@ try:
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
-            # 【タブ1：鳥から探す】 (🔥 3カラムグリッドUI 🔥)
+            # 【タブ1：鳥から探す】 (Slide 5 クリーンUI & 3カラムグリッド)
             with tab_bird:
                 search_query = st.text_input(
                     "検索窓", 
@@ -146,19 +166,16 @@ try:
                 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
                 
                 bird_counts = df_all['common_name'].value_counts()
-                
-                # 検索ワードに引っかかった鳥だけを抽出
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
                 
-                # 🛠️ 3つのカラム（列）を作成
+                # 🛠️ 3つのカラムを作成
                 cols = st.columns(3)
                 
-                # 抽出した鳥を3つのカラムに順番に振り分けていくループ処理
+                # 3つのカラムに順番に振り分ける
                 for i, (bird_name, count) in enumerate(filtered_birds.items()):
-                    col_idx = i % 3  # 0, 1, 2, 0, 1, 2... と順番にカラムを指定する算術ハック
+                    col_idx = i % 3  # 0, 1, 2の順番
                     
                     with cols[col_idx]:
-                        # コンテナを使って要素のまとまりを作る
                         with st.container():
                             img_url = bird_images.get(bird_name)
                             if img_url:
@@ -169,12 +186,10 @@ try:
                                     unsafe_allow_html=True
                                 )
                             
-                            # 鳥の名前ボタン（幅いっぱいに広げる）
                             if st.button(f"{bird_name}", key=f"btn_bird_{bird_name}", use_container_width=True):
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
                         
-                        # 行の間に少しだけ縦の隙間を空ける
                         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
             # 【タブ2：場所から探す】
@@ -265,10 +280,8 @@ try:
                         with col_meta2:
                             st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
                             loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
-                            # 場所への直接ワープリンク
                             st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
                         
-                        # 遅延読み込みロジック
                         audio_key = f"audio_{wav_filename}_{row['start_sec']}"
                         if loop_idx == 0 or audio_key in st.session_state.loaded_audio:
                             try:
