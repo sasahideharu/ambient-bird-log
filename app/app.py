@@ -91,23 +91,23 @@ def go_to_main():
     st.session_state.selected_loc = None
 
 # --- 3. メインUI ---
-# スマホで折り返さないスマートなタイトル
-st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
+# 📍 修正点1: タイトルの中央揃え (text-align: center)
+st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack: 全ブラウザ対応の完全なる強制横並びロジック
+# 🔥 GEʍlNEʍ's CSS Hack: レイアウトの完全制御
 st.markdown("""
     <style>
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     
+    /* 📍 修正点3: 画像とボタンに極小の空白 (margin-bottom: 4px) */
     img { 
         border-radius: 6px; 
         object-fit: cover !important; 
         aspect-ratio: 1 / 1 !important; 
         width: 100% !important; 
-        margin-bottom: 5px;
+        margin-bottom: 4px !important;
     }
     
-    /* 📱 スマホ画面の時にStreamlitの縦積み機能を完全に無効化する */
     @media (max-width: 640px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
@@ -143,24 +143,24 @@ try:
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
-            # 【タブ1：鳥から探す】 (Slide 5: 3カラムグリッド)
+            # 【タブ1：鳥から探す】
             with tab_bird:
                 search_query = st.text_input(
                     "検索窓", 
                     label_visibility="collapsed", 
                     placeholder="和名で検索" 
                 )
-                st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+                
+                # 📍 修正点2: 検索窓と画像に少しの空白 (heightを20pxに拡大)
+                st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
                 
                 bird_counts = df_all['common_name'].value_counts()
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
                 
-                # 🛠️ 3つのカラムを作成
                 cols = st.columns(3)
                 
-                # 3つのカラムに順番に振り分ける
                 for i, (bird_name, count) in enumerate(filtered_birds.items()):
-                    col_idx = i % 3  # 0, 1, 2の順番
+                    col_idx = i % 3
                     
                     with cols[col_idx]:
                         with st.container():
@@ -168,8 +168,9 @@ try:
                             if img_url:
                                 st.image(img_url, use_container_width=True)
                             else:
+                                # 📍 修正点3 & 5: No Imageを写真と同じサイズ(width: 100%)にし、極小の空白(margin-bottom: 4px)を設定
                                 st.markdown(
-                                    "<div style='background-color:#1E1E1E; border-radius:6px; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 5px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", 
+                                    "<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", 
                                     unsafe_allow_html=True
                                 )
                             
@@ -177,7 +178,8 @@ try:
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
                         
-                        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                        # 📍 修正点4: 行間の空白 (高さ15pxに調整)
+                        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
             # 【タブ2：場所から探す】
             with tab_location:
