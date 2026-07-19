@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from scipy.io import wavfile
 import uuid
+import math
 
 # --- 1. 環境変数とSupabase接続 ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -93,7 +94,7 @@ def go_to_main():
 # --- 3. メインUI ---
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack: 全ブラウザ対応・スマホ横並び強制
+# 🔥 GEʍlNEʍ's CSS Hack
 st.markdown("""
     <style>
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
@@ -127,20 +128,14 @@ try:
             is_admin = st.query_params.get("admin") == "true"
             
             if is_admin:
-                tab_bird, tab_location, tab_admin = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理"])
+                tab_bird, tab_location, tab_admin, tab_data = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理", "📁 データ登録"])
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
             with tab_bird:
-                # 📍 以前と同じスライダー表示
                 min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, format="%d%%")
-                
-                # 📍 修正: スライダーと検索窓の間に透明な高さのあるDivを置いて被りを解消
                 st.markdown("<div style='min-height: 40px;'></div>", unsafe_allow_html=True)
-                
                 search_query = st.text_input("検索窓", label_visibility="collapsed", placeholder="和名で検索")
-                
-                # 📍 画像エリアとの空白
                 st.markdown("<div style='min-height: 20px;'></div>", unsafe_allow_html=True)
                 
                 df_filtered = df_all[df_all['confidence'] >= (min_confidence / 100.0)]
@@ -205,6 +200,68 @@ try:
                                     st.success(f"🔥 {upload_bird} の画像をCloudに刻み込んだぜ！")
                                 except Exception as e:
                                     st.error(f"アップロードに失敗したぜ: {e}")
+                
+                # 📍 NEW: BirdNETのCSVを一括登録する管理画面
+                with tab_data:
+                    st.markdown("### 📁 解析データのアップロード")
+                    st.info("BirdNETが出力したCSVファイル（複数可）と、位置情報をセットにして直接DBへ流し込むぜ。")
+                    
+                    loc_name_input = st.text_input("📍 場所の名前 (例: 鎌倉 源氏山)", placeholder="例: 鎌倉")
+                    
+                    col_lat, col_lon = st.columns(2)
+                    with col_lat:
+                        lat_input = st.number_input("🌐 緯度 (Latitude)", format="%.6f", value=35.319200)
+                    with col_lon:
+                        lon_input = st.number_input("🌐 経度 (Longitude)", format="%.6f", value=139.546700)
+                        
+                    uploaded_csvs = st.file_uploader("BirdNETのCSVを選択してくれ (複数選択OK)", type=["csv"], accept_multiple_files=True)
+                    
+                    if st.button("🚀 DBへ一括登録", use_container_width=True):
+                        if not loc_name_input:
+                            st.warning("⚠️ 場所の名前を入力してくれ！")
+                        elif not uploaded_csvs:
+                            st.warning("⚠️ CSVファイルが選ばれてないぜ！")
+                        else:
+                            with st.spinner("データをパースしてSupabaseに流し込んでるぜ..."):
+                                try:
+                                    all_data = []
+                                    for uploaded_csv in uploaded_csvs:
+                                        df_csv = pd.read_csv(uploaded_csv)
+                                        
+                                        # カラム名リネーム
+                                        df_csv = df_csv.rename(columns={
+                                            'Start (s)': 'start_sec',
+                                            'End (s)': 'end_sec',
+                                            'Scientific name': 'scientific_name',
+                                            'Common name': 'common_name',
+                                            'Confidence': 'confidence'
+                                        })
+                                        
+                                        # ファイル名抽出
+                                        if 'File' in df_csv.columns:
+                                            df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)))
+                                            df_csv = df_csv.drop(columns=['File'])
+                                            
+                                        # メタデータ追加
+                                        df_csv['location_name'] = loc_name_input
+                                        df_csv['latitude'] = lat_input
+                                        df_csv['longitude'] = lon_input
+                                        
+                                        all_data.append(df_csv)
+                                        
+                                    if all_data:
+                                        final_df = pd.concat(all_data, ignore_index=True)
+                                        
+                                        # NaNをNoneに変換 (JSONとしてSupabaseに送るための処理)
+                                        final_df = final_df.replace({float('nan'): None})
+                                        
+                                        records = final_df.to_dict(orient='records')
+                                        
+                                        # SupabaseのテーブルへInsert
+                                        response = supabase.table("detections").insert(records).execute()
+                                        st.success(f"🔥 完了！計 {len(records)} 件のデータをDBに刻み込んだぜ！")
+                                except Exception as e:
+                                    st.error(f"システムエラーが発生したぜ: {e}")
 
         elif st.session_state.page == 'bird_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
