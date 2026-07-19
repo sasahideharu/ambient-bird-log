@@ -115,7 +115,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 try:
-    response_all = supabase.table("detections").select("*").execute()
+    response_all = supabase.table("detections").select("*").limit(10000).execute()
     response_master = supabase.table("bird_master").select("*").execute()
     bird_images = {row['common_name']: row['image_url'] for row in response_master.data} if response_master.data else {}
     
@@ -259,6 +259,7 @@ try:
                                         final_df = pd.concat(all_data, ignore_index=True).replace({float('nan'): None})
                                         supabase.table("detections").insert(final_df.to_dict(orient='records')).execute()
                                         st.success(f"🔥 {len(final_df)} 件のデータをDBに刻み込んだぜ！")
+                                        st.rerun()  # 📍 これを追加！
                                 except Exception as e:
                                     st.error(f"システムエラー: {e}")
 
