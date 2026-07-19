@@ -202,66 +202,65 @@ try:
                                     st.error(f"アップロードに失敗したぜ: {e}")
                 
                 # 📍 NEW: BirdNETのCSVを一括登録する管理画面
+                # 📍 修正箇所: 📁 データ登録タブ
                 with tab_data:
                     st.markdown("### 📁 解析データのアップロード")
-                    st.info("BirdNETが出力したCSVファイル（複数可）と、位置情報をセットにして直接DBへ流し込むぜ。")
                     
-                    loc_name_input = st.text_input("📍 場所の名前 (例: 鎌倉 源氏山)", placeholder="例: 鎌倉")
+                    # 既存データの取得
+                    loc_df = df_all.dropna(subset=['latitude', 'longitude'])
+                    loc_master = loc_df[['location_name', 'latitude', 'longitude']].drop_duplicates(subset=['location_name'])
+                    
+                    # セレクトボックスで既存場所を選択
+                    loc_options = ["(新規追加)"] + loc_master['location_name'].tolist()
+                    selected_loc = st.selectbox("📍 場所を選択 (新規なら左記を選択)", loc_options)
+                    
+                    # オートフィル用の初期値
+                    initial_lat, initial_lon = 35.319200, 139.546700
+                    initial_name = ""
+                    
+                    if selected_loc != "(新規追加)":
+                        match = loc_master[loc_master['location_name'] == selected_loc].iloc[0]
+                        initial_name = match['location_name']
+                        initial_lat = float(match['latitude'])
+                        initial_lon = float(match['longitude'])
+                    
+                    loc_name_input = st.text_input("場所の名前", value=initial_name)
                     
                     col_lat, col_lon = st.columns(2)
                     with col_lat:
-                        lat_input = st.number_input("🌐 緯度 (Latitude)", format="%.6f", value=35.319200)
+                        lat_input = st.number_input("🌐 緯度", format="%.6f", value=initial_lat)
                     with col_lon:
-                        lon_input = st.number_input("🌐 経度 (Longitude)", format="%.6f", value=139.546700)
+                        lon_input = st.number_input("🌐 経度", format="%.6f", value=initial_lon)
                         
-                    uploaded_csvs = st.file_uploader("BirdNETのCSVを選択してくれ (複数選択OK)", type=["csv"], accept_multiple_files=True)
+                    uploaded_csvs = st.file_uploader("BirdNETのCSVを選択 (複数OK)", type=["csv"], accept_multiple_files=True)
                     
                     if st.button("🚀 DBへ一括登録", use_container_width=True):
+                        # (※以下の登録ロジックは前回と変更なし)
                         if not loc_name_input:
                             st.warning("⚠️ 場所の名前を入力してくれ！")
                         elif not uploaded_csvs:
                             st.warning("⚠️ CSVファイルが選ばれてないぜ！")
                         else:
-                            with st.spinner("データをパースしてSupabaseに流し込んでるぜ..."):
+                            with st.spinner("Supabaseへ同期中..."):
                                 try:
                                     all_data = []
                                     for uploaded_csv in uploaded_csvs:
                                         df_csv = pd.read_csv(uploaded_csv)
-                                        
-                                        # カラム名リネーム
-                                        df_csv = df_csv.rename(columns={
-                                            'Start (s)': 'start_sec',
-                                            'End (s)': 'end_sec',
-                                            'Scientific name': 'scientific_name',
-                                            'Common name': 'common_name',
-                                            'Confidence': 'confidence'
-                                        })
-                                        
-                                        # ファイル名抽出
+                                        df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
                                         if 'File' in df_csv.columns:
                                             df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)))
                                             df_csv = df_csv.drop(columns=['File'])
-                                            
-                                        # メタデータ追加
                                         df_csv['location_name'] = loc_name_input
                                         df_csv['latitude'] = lat_input
                                         df_csv['longitude'] = lon_input
-                                        
                                         all_data.append(df_csv)
                                         
                                     if all_data:
-                                        final_df = pd.concat(all_data, ignore_index=True)
-                                        
-                                        # NaNをNoneに変換 (JSONとしてSupabaseに送るための処理)
-                                        final_df = final_df.replace({float('nan'): None})
-                                        
-                                        records = final_df.to_dict(orient='records')
-                                        
-                                        # SupabaseのテーブルへInsert
-                                        response = supabase.table("detections").insert(records).execute()
-                                        st.success(f"🔥 完了！計 {len(records)} 件のデータをDBに刻み込んだぜ！")
+                                        final_df = pd.concat(all_data, ignore_index=True).replace({float('nan'): None})
+                                        supabase.table("detections").insert(final_df.to_dict(orient='records')).execute()
+                                        st.success(f"🔥 {len(final_df)} 件のデータをDBに刻み込んだぜ！")
                                 except Exception as e:
-                                    st.error(f"システムエラーが発生したぜ: {e}")
+                                    st.error(f"システムエラー: {e}")
 
         elif st.session_state.page == 'bird_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
