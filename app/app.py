@@ -169,7 +169,7 @@ try:
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 if not df_loc.empty:
                     df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude'])
-                    st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150)
+                    st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150, height=250)
                     st.divider()
                     st.markdown("**📍 過去の記録（場所別）**")
                     unique_locations = sorted(df_loc['location_name'].unique().tolist())
