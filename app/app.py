@@ -86,8 +86,17 @@ def go_to_loc_detail(loc_name):
     st.session_state.page = 'loc_detail'
     st.session_state.selected_loc = loc_name
 
-def go_to_main():
+# --- 🔥 ここで鳥用・場所用のメイン遷移関数を定義 ---
+def go_to_main_bird():
     st.session_state.page = 'main'
+    st.session_state.active_main_tab = 0  # 0: 鳥から探す
+    st.session_state.selected_date = None
+    st.session_state.selected_bird = None
+    st.session_state.selected_loc = None
+
+def go_to_main_loc():
+    st.session_state.page = 'main'
+    st.session_state.active_main_tab = 1  # 1: 場所から探す
     st.session_state.selected_date = None
     st.session_state.selected_bird = None
     st.session_state.selected_loc = None
