@@ -303,6 +303,7 @@ try:
                 
                 # 日にちと場所のフィルター
                 # --- 🔥 連動型フィルター（カスケード）のロジック ---
+                # --- 🔥 連動型フィルター（カスケード）のロジック ---
                 date_key = f"filter_date_{target_bird}"
                 loc_key = f"filter_loc_{target_bird}"
                 
@@ -345,15 +346,11 @@ try:
                 
                 st.divider()
                 
-                # 以降は既存のリスト描画処理 (10件表示・ロードの処理)
+                # --- 🔥 リスト描画 (10件表示・ロードの処理) ---
                 if bird_data.empty:
                     st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
                 else:
-                
-                if bird_data.empty:
-                    st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
-                else:
-                    # --- 🔥 上位10件をスライスして表示 ---
+                    # 上位10件をスライスして表示
                     current_limit = st.session_state[count_key]
                     bird_data_to_show = bird_data.head(current_limit)
                     
@@ -373,7 +370,7 @@ try:
                                 loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
                                 st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
                             
-                            # 表示された10件は無条件で物理カット＆自動ロード
+                            # 表示されたものは無条件で物理カット＆自動ロード
                             try:
                                 with st.spinner("Loading Audio..."):
                                     sliced_audio, actual_start, actual_end = get_sliced_remote_wav(public_url, float(row['start_sec']), float(row['end_sec']))
@@ -382,7 +379,7 @@ try:
                                 st.error(f"ロードエラー: {e}")
                         st.divider()
                     
-                    # --- 🔥 10件追加ロードボタン ---
+                    # 10件追加ロードボタン
                     if current_limit < len(bird_data):
                         if st.button("🔽 さらに10件読み込む", use_container_width=True, key=f"btn_load_more_bird_{target_bird}"):
                             st.session_state[count_key] += 10
