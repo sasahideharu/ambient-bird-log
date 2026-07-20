@@ -203,8 +203,9 @@ try:
                 
                 # 📍 NEW: BirdNETのCSVを一括登録する管理画面
                 # 📍 修正箇所: 📁 データ登録タブ
+                # 📍 修正箇所: 📁 データ登録タブ
                 with tab_data:
-                    st.markdown("### 📁 解析データのアップロード")
+                    st.markdown("### 📁 解析データ & 音声のアップロード")
                     
                     # 既存データの取得
                     loc_df = df_all.dropna(subset=['latitude', 'longitude'])
@@ -232,34 +233,48 @@ try:
                     with col_lon:
                         lon_input = st.number_input("🌐 経度", format="%.6f", value=initial_lon)
                         
-                    uploaded_csvs = st.file_uploader("BirdNETのCSVを選択 (複数OK)", type=["csv"], accept_multiple_files=True)
+                    # 📍 修正: CSVとWAVの両方を待ち受けるUploader
+                    uploaded_csvs = st.file_uploader("📄 BirdNETのCSVを選択 (複数OK)", type=["csv"], accept_multiple_files=True)
+                    uploaded_wavs = st.file_uploader("🎵 録音データ(WAV)を選択 (複数OK)", type=["wav"], accept_multiple_files=True)
                     
-                    if st.button("🚀 DBへ一括登録", use_container_width=True):
-                        # (※以下の登録ロジックは前回と変更なし)
+                    if st.button("🚀 DB & Storageへ一括登録", use_container_width=True):
                         if not loc_name_input:
                             st.warning("⚠️ 場所の名前を入力してくれ！")
-                        elif not uploaded_csvs:
-                            st.warning("⚠️ CSVファイルが選ばれてないぜ！")
+                        elif not uploaded_csvs and not uploaded_wavs:
+                            st.warning("⚠️ CSVかWAVファイルを選んでくれ！")
                         else:
                             with st.spinner("Supabaseへ同期中..."):
                                 try:
-                                    all_data = []
-                                    for uploaded_csv in uploaded_csvs:
-                                        df_csv = pd.read_csv(uploaded_csv)
-                                        df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
-                                        if 'File' in df_csv.columns:
-                                            df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)))
-                                            df_csv = df_csv.drop(columns=['File'])
-                                        df_csv['location_name'] = loc_name_input
-                                        df_csv['latitude'] = lat_input
-                                        df_csv['longitude'] = lon_input
-                                        all_data.append(df_csv)
-                                        
-                                    if all_data:
-                                        final_df = pd.concat(all_data, ignore_index=True).replace({float('nan'): None})
-                                        supabase.table("detections").insert(final_df.to_dict(orient='records')).execute()
-                                        st.success(f"🔥 {len(final_df)} 件のデータをDBに刻み込んだぜ！")
-                                        st.rerun()  # 📍 これを追加！
+                                    # 1. WAVファイルをStorageへ直接アップロード
+                                    if uploaded_wavs:
+                                        for wav_file in uploaded_wavs:
+                                            supabase.storage.from_(BUCKET_NAME).upload(
+                                                wav_file.name, 
+                                                wav_file.getvalue(), 
+                                                file_options={"upsert": "true"}
+                                            )
+                                        st.success(f"🎵 {len(uploaded_wavs)} 個のWAVファイルをStorageにアップロードしたぜ！")
+
+                                    # 2. CSVデータをパースしてDBへ登録
+                                    if uploaded_csvs:
+                                        all_data = []
+                                        for uploaded_csv in uploaded_csvs:
+                                            df_csv = pd.read_csv(uploaded_csv)
+                                            df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
+                                            if 'File' in df_csv.columns:
+                                                df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)))
+                                                df_csv = df_csv.drop(columns=['File'])
+                                            df_csv['location_name'] = loc_name_input
+                                            df_csv['latitude'] = lat_input
+                                            df_csv['longitude'] = lon_input
+                                            all_data.append(df_csv)
+                                            
+                                        if all_data:
+                                            final_df = pd.concat(all_data, ignore_index=True).replace({float('nan'): None})
+                                            supabase.table("detections").insert(final_df.to_dict(orient='records')).execute()
+                                            st.success(f"🔥 {len(final_df)} 件の解析データをDBに刻み込んだぜ！")
+                                            
+                                    st.rerun()  # 画面をリフレッシュ
                                 except Exception as e:
                                     st.error(f"システムエラー: {e}")
 
