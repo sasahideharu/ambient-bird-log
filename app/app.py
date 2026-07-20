@@ -301,8 +301,23 @@ try:
                 else:
                     st.info("🖼️ まだ画像が登録されていないぜ。「⚙️ 画像管理」タブからUploadしてくれ。")
                 
-                # 日にちと場所のフィルター
-                # --- 🔥 連動型フィルター（カスケード）のロジック ---
+                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+                
+                # --- 🔥 NEW: 信頼性ゲージ ---
+                min_confidence = st.slider(
+                    "信頼度で絞り込む", 
+                    min_value=0, 
+                    max_value=100, 
+                    value=60, 
+                    format="%d%%", 
+                    key=f"slider_conf_{target_bird}"
+                )
+                
+                # ゲージの値でデータを事前フィルタリング
+                bird_data = bird_data[bird_data['confidence'] >= (min_confidence / 100.0)]
+                
+                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+
                 # --- 🔥 連動型フィルター（カスケード）のロジック ---
                 date_key = f"filter_date_{target_bird}"
                 loc_key = f"filter_loc_{target_bird}"
