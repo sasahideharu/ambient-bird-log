@@ -10,6 +10,7 @@ from supabase import create_client, Client
 from scipy.io import wavfile
 import uuid
 import math
+import streamlit.components.v1 as components
 
 # --- 1. 環境変数とSupabase接続 ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -138,6 +139,21 @@ try:
                 tab_bird, tab_location, tab_admin, tab_data = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理", "📁 データ登録"])
             else:
                 tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
+
+            # --- 🔥 GEʍlNEʍ Hack: JSで裏側からタブを強制クリック ---
+            if 'active_main_tab' in st.session_state:
+                if st.session_state.active_main_tab == 1:
+                    components.html("""
+                        <script>
+                        // iframeの中から親要素(StreamlitのDOM)にアクセスし、2番目のタブをクリック
+                        const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
+                        if (tabs.length > 1) {
+                            tabs[1].click();
+                        }
+                        </script>
+                    """, height=0)
+                # ループ実行を防ぐためにステートから削除
+                st.session_state.pop('active_main_tab')
 
             with tab_bird:
                 min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, format="%d%%")
@@ -315,12 +331,14 @@ try:
 
         # --- 🐦 鳥の詳細画面 ---
         elif st.session_state.page == 'bird_detail':
-            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_bird_detail_1")
+                # on_click を go_to_main_bird に変更
+                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_bird_detail_2")
+                # on_click を go_to_main_loc に変更
+                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
             
             target_bird = st.session_state.selected_bird
@@ -444,12 +462,14 @@ try:
 
         # --- 📅 日付の詳細画面 ---
         elif st.session_state.page == 'date_detail':
-            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_date_detail_1")
+                # on_click を go_to_main_bird に変更
+                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_date_detail_2")
+                # on_click を go_to_main_loc に変更
+                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
             
             target_date = st.session_state.selected_date
@@ -541,12 +561,14 @@ try:
                             st.rerun()
 
         elif st.session_state.page == 'loc_detail':
-            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_loc_detail_1")
+                # on_click を go_to_main_bird に変更
+                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_loc_detail_2")
+                # on_click を go_to_main_loc に変更
+                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
             
             target_loc = st.session_state.selected_loc
