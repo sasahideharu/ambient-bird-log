@@ -443,7 +443,6 @@ try:
                             st.rerun()
 
         # --- 📅 日付の詳細画面 ---
-        # --- 📅 日付の詳細画面 ---
         elif st.session_state.page == 'date_detail':
             # 🔥 疑似タブナビゲーション（緑の強調なし）
             col_nav1, col_nav2 = st.columns(2)
@@ -480,8 +479,25 @@ try:
                     key=f"slider_conf_date_{target_date}"
                 )
                 
-                # ゲージの値でデータを事前フィルタリング
+                # 1. まず信頼度ゲージの値でデータを事前フィルタリング
                 day_data = day_data[day_data['confidence'] >= (min_confidence / 100.0)]
+                
+                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+                
+                # --- 🔥 NEW: 鳥で絞り込むフィルター ---
+                if not day_data.empty:
+                    # 信頼度フィルターを通過した鳥だけをリストアップする
+                    available_birds = ["鳥で絞り込む (すべて)"] + sorted(day_data['common_name'].dropna().unique().tolist())
+                    selected_bird_filter = st.selectbox(
+                        "鳥を選択", 
+                        available_birds, 
+                        key=f"filter_bird_date_{target_date}", 
+                        label_visibility="collapsed"
+                    )
+                    
+                    # 選択された鳥でさらにフィルタリング
+                    if selected_bird_filter != "鳥で絞り込む (すべて)":
+                        day_data = day_data[day_data['common_name'] == selected_bird_filter]
                 
                 st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
