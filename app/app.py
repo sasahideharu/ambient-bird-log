@@ -280,7 +280,14 @@ try:
 
         # --- 🐦 鳥の詳細画面 ---
         elif st.session_state.page == 'bird_detail':
-            st.button("⬅️ メインに戻る", on_click=go_to_main)
+            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            col_nav1, col_nav2 = st.columns(2)
+            with col_nav1:
+                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_bird_detail_1")
+            with col_nav2:
+                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_bird_detail_2")
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            
             target_bird = st.session_state.selected_bird
             
             # --- 🔥 表示件数のステート管理 (初期値10件) ---
@@ -402,7 +409,14 @@ try:
 
         # --- 📅 日付の詳細画面 ---
         elif st.session_state.page == 'date_detail':
-            st.button("⬅️ メインに戻る", on_click=go_to_main)
+            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            col_nav1, col_nav2 = st.columns(2)
+            with col_nav1:
+                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_date_detail_1")
+            with col_nav2:
+                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_date_detail_2")
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            
             target_date = st.session_state.selected_date
             
             # --- 🔥 表示件数のステート管理 (初期値10件) ---
@@ -453,8 +467,16 @@ try:
                         st.rerun()
 
         elif st.session_state.page == 'loc_detail':
-            st.button("⬅️ メインに戻る", on_click=go_to_main)
+            # 🔥 疑似タブナビゲーション（緑の強調なし）
+            col_nav1, col_nav2 = st.columns(2)
+            with col_nav1:
+                st.button("🐦 鳥から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_loc_detail_1")
+            with col_nav2:
+                st.button("📍 場所から探す", on_click=go_to_main, type="tertiary", use_container_width=True, key="nav_loc_detail_2")
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            
             target_loc = st.session_state.selected_loc
+            
             st.markdown(f"## 📍 {target_loc} の記録")
             loc_data = df_all[df_all['location_name'] == target_loc].sort_values(by='record_date', ascending=False)
             if not loc_data.empty:
