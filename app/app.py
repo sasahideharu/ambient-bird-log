@@ -282,44 +282,73 @@ try:
             st.button("⬅️ メインに戻る", on_click=go_to_main)
             target_bird = st.session_state.selected_bird
             bird_data = df_all[df_all['common_name'] == target_bird].sort_values(by='confidence', ascending=False)
+            
             if not bird_data.empty:
                 scientific_name = bird_data.iloc[0]['scientific_name']
                 st.markdown(f"## 🐦 {target_bird}")
                 st.caption(f"学名: *{scientific_name}*")
+                
                 img_response = supabase.table("bird_master").select("image_url").eq("common_name", target_bird).execute()
                 if img_response.data and img_response.data[0]['image_url']:
                     st.image(img_response.data[0]['image_url'], use_container_width=True)
                 else:
                     st.info("🖼️ まだ画像が登録されていないぜ。「⚙️ 画像管理」タブからUploadしてくれ。")
+                
+                # --- 🔥 NEW: 日にちと場所のフィルター機能 ---
+                # 選択肢の生成 (先頭にデフォルトのプレースホルダーを追加)
+                available_dates = ["日にちを選択"] + sorted(bird_data['record_date'].dropna().unique().tolist(), reverse=True)
+                available_locs = ["場所を選択"] + sorted(bird_data['location_name'].dropna().unique().tolist())
+                
+                # 2カラムでセレクトボックスをボタン風に横並び配置
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    selected_date = st.selectbox("日にち", available_dates, label_visibility="collapsed")
+                with col_f2:
+                    selected_loc = st.selectbox("場所", available_locs, label_visibility="collapsed")
+                
+                # フィルターの適用 (AND条件)
+                if selected_date != "日にちを選択":
+                    bird_data = bird_data[bird_data['record_date'] == selected_date]
+                if selected_loc != "場所を選択":
+                    bird_data = bird_data[bird_data['location_name'] == selected_loc]
+                
                 st.divider()
-                loop_idx = 0
-                for index, row in bird_data.iterrows():
-                    with st.container():
-                        wav_filename = row['wav_filename']
-                        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
-                        duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
-                        confidence_pct = int(row['confidence'] * 100)
-                        col_meta1, col_meta2 = st.columns([1, 1])
-                        with col_meta1:
-                            st.markdown(f"**信頼度:** `{confidence_pct}%`")
-                            st.markdown(f"**再生時間:** `{duration}秒`")
-                        with col_meta2:
-                            st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
-                            loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
-                            st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
-                        audio_key = f"audio_{wav_filename}_{row['start_sec']}"
-                        if loop_idx == 0 or audio_key in st.session_state.loaded_audio:
-                            try:
-                                with st.spinner("Loading Audio..."):
-                                    sliced_audio, actual_start, actual_end = get_sliced_remote_wav(public_url, float(row['start_sec']), float(row['end_sec']))
-                                st.audio(sliced_audio, format="audio/wav")
-                            except Exception as e:
-                                st.error(f"ロードエラー: {e}")
-                        else:
-                            st.button("🔊 再生データをロード", on_click=load_audio_clip, args=(audio_key,), key=f"btn_load_{audio_key}")
-                    st.divider()
-                    loop_idx += 1
-
+                
+                # フィルター後の結果表示
+                if bird_data.empty:
+                    st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
+                else:
+                    loop_idx = 0
+                    for index, row in bird_data.iterrows():
+                        with st.container():
+                            wav_filename = row['wav_filename']
+                            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
+                            duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
+                            confidence_pct = int(row['confidence'] * 100)
+                            
+                            col_meta1, col_meta2 = st.columns([1, 1])
+                            with col_meta1:
+                                st.markdown(f"**信頼度:** `{confidence_pct}%`")
+                                st.markdown(f"**再生時間:** `{duration}秒`")
+                            with col_meta2:
+                                st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
+                                loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
+                                st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
+                            
+                            audio_key = f"audio_{wav_filename}_{row['start_sec']}"
+                            if loop_idx == 0 or audio_key in st.session_state.loaded_audio:
+                                try:
+                                    with st.spinner("Loading Audio..."):
+                                        sliced_audio, actual_start, actual_end = get_sliced_remote_wav(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    st.audio(sliced_audio, format="audio/wav")
+                                except Exception as e:
+                                    st.error(f"ロードエラー: {e}")
+                            else:
+                                st.button("🔊 再生データをロード", on_click=load_audio_clip, args=(audio_key,), key=f"btn_load_{audio_key}")
+                        st.divider()
+                        loop_idx += 1
+                        
+                        
         elif st.session_state.page == 'date_detail':
             st.button("⬅️ メインに戻る", on_click=go_to_main)
             target_date = st.session_state.selected_date
