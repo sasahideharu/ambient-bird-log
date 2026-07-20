@@ -94,9 +94,10 @@ def go_to_main():
 # --- 3. メインUI ---
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack
+# 🔥 GEʍlNEʍ's CSS Hack (Sticky Header 追加版)
 st.markdown("""
     <style>
+    /* 既存のレイアウト調整 */
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     img { 
         border-radius: 6px; 
@@ -111,6 +112,48 @@ st.markdown("""
         button p { font-size: 10px !important; }
     }
     button p { font-size: 12px !important; }
+
+    /* --- 🔥 NEW: Sticky Header (上部固定) の魔法 --- */
+    
+    /* 1. タイトル部分の固定 */
+    div[data-testid="stMarkdownContainer"] > h2 {
+        position: sticky !important;
+        top: 0px !important;
+        background-color: #0E1117 !important; /* 背景の透過を防ぐ */
+        z-index: 1000 !important;
+        padding-top: 1rem !important;
+        margin-top: -1rem !important;
+        padding-bottom: 5px !important;
+    }
+    
+    /* 2. メイン画面のタブ(st.tabs)の固定 */
+    div[data-testid="stTabs"] > div[data-baseweb="tab-list"] {
+        position: sticky !important;
+        top: 45px !important; /* タイトルの下に配置 */
+        background-color: #0E1117 !important;
+        z-index: 999 !important;
+        padding-top: 10px !important;
+        padding-bottom: 5px !important;
+    }
+    
+    /* 3. 詳細画面の疑似タブ(2カラム)の固定 */
+    /* Streamlitが生成する最初のHorizontalBlockを狙い撃ちする */
+    div[data-testid="stHorizontalBlock"]:first-of-type {
+        position: sticky !important;
+        top: 45px !important;
+        background-color: #0E1117 !important;
+        z-index: 999 !important;
+        padding-top: 10px !important;
+        padding-bottom: 5px !important;
+    }
+    
+    /* 4. 詳細画面の疑似タブの下線(hr)の固定 */
+    hr:first-of-type {
+        position: sticky !important;
+        top: 95px !important;
+        z-index: 998 !important;
+        margin-bottom: 16px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
