@@ -94,12 +94,12 @@ def go_to_main():
 # --- 3. メインUI ---
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack (トップ余白削減・安定版)
+# 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版)
 st.markdown("""
     <style>
-    /* --- 🔥 NEW: Streamlitデフォルトの巨大な上部余白を削ぎ落とす --- */
+    /* --- 🔥 NEW: ネイティブヘッダーを避けつつ余白を削る黄金比 --- */
     .block-container {
-        padding-top: 1.5rem !important; /* デフォルトの約6remから大幅に削減 */
+        padding-top: 3.5rem !important; /* 1.5remから3.5remへ調整 */
         padding-bottom: 1rem !important;
     }
     
