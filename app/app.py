@@ -302,22 +302,53 @@ try:
                     st.info("🖼️ まだ画像が登録されていないぜ。「⚙️ 画像管理」タブからUploadしてくれ。")
                 
                 # 日にちと場所のフィルター
-                available_dates = ["日にちを選択"] + sorted(bird_data['record_date'].dropna().unique().tolist(), reverse=True)
-                available_locs = ["場所を選択"] + sorted(bird_data['location_name'].dropna().unique().tolist())
+                # --- 🔥 連動型フィルター（カスケード）のロジック ---
+                date_key = f"filter_date_{target_bird}"
+                loc_key = f"filter_loc_{target_bird}"
                 
+                # 現在の選択状態を取得 (初期値は未選択)
+                current_date = st.session_state.get(date_key, "日にちを選択")
+                current_loc = st.session_state.get(loc_key, "場所を選択")
+                
+                # 📅 場所の選択状態に基づいて、選択可能な「日にち」を絞り込む
+                if current_loc != "場所を選択":
+                    valid_dates_df = bird_data[bird_data['location_name'] == current_loc]
+                else:
+                    valid_dates_df = bird_data
+                available_dates = ["日にちを選択"] + sorted(valid_dates_df['record_date'].dropna().unique().tolist(), reverse=True)
+                
+                # 📍 日にちの選択状態に基づいて、選択可能な「場所」を絞り込む
+                if current_date != "日にちを選択":
+                    valid_locs_df = bird_data[bird_data['record_date'] == current_date]
+                else:
+                    valid_locs_df = bird_data
+                available_locs = ["場所を選択"] + sorted(valid_locs_df['location_name'].dropna().unique().tolist())
+                
+                # 万が一、前回の選択肢が新しいリストに存在しない場合は未選択状態にリセット
+                if current_date not in available_dates:
+                    current_date = "日にちを選択"
+                if current_loc not in available_locs:
+                    current_loc = "場所を選択"
+                
+                # UIの描画
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
-                    selected_date = st.selectbox("日にち", available_dates, label_visibility="collapsed")
+                    selected_date = st.selectbox("日にち", available_dates, index=available_dates.index(current_date), key=date_key, label_visibility="collapsed")
                 with col_f2:
-                    selected_loc = st.selectbox("場所", available_locs, label_visibility="collapsed")
+                    selected_loc = st.selectbox("場所", available_locs, index=available_locs.index(current_loc), key=loc_key, label_visibility="collapsed")
                 
-                # フィルター適用 (AND条件)
+                # 実データへのフィルター適用 (AND条件)
                 if selected_date != "日にちを選択":
                     bird_data = bird_data[bird_data['record_date'] == selected_date]
                 if selected_loc != "場所を選択":
                     bird_data = bird_data[bird_data['location_name'] == selected_loc]
                 
                 st.divider()
+                
+                # 以降は既存のリスト描画処理 (10件表示・ロードの処理)
+                if bird_data.empty:
+                    st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
+                else:
                 
                 if bird_data.empty:
                     st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
