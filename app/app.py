@@ -168,11 +168,42 @@ try:
                 st.markdown("### 🗺️ 場所から探す")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 if not df_loc.empty:
-                    df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude'])
-                    st.map(df_map, latitude='latitude', longitude='longitude', color='#39FF14', size=150, height=250)
+                    # SettingWithCopyWarning を防ぐために .copy() を追加
+                    df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude']).copy()
+                    
+                    # --- 🔥 GEʍlNEʍ Hack: 見えないダミーポイントで描画範囲（縮尺）を広げる ---
+                    # 1. 緯度経度の最大・最小値を計算
+                    lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
+                    lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
+                    
+                    # 2. 描画範囲を広げるための余白（20%増し）を計算
+                    # データが1箇所しかない場合のゼロ除算や無変化を防ぐため、最低でも0.01の余白を確保
+                    lat_pad = max((lat_max - lat_min) * 0.2, 0.01)
+                    lon_pad = max((lon_max - lon_min) * 0.2, 0.01)
+                    
+                    # 3. 実際のデータに色とサイズの列を追加
+                    df_map['dot_color'] = '#39FF14'
+                    df_map['dot_size'] = 150
+                    
+                    # 4. 枠を広げるための「完全透明でサイズ0」のダミーデータを外側に2点配置
+                    dummy_data = pd.DataFrame({
+                        'latitude': [lat_min - lat_pad, lat_max + lat_pad],
+                        'longitude': [lon_min - lon_pad, lon_max + lon_pad],
+                        'location_name': ['dummy', 'dummy'],
+                        'dot_color': ['#00000000', '#00000000'], # 8桁Hexで透明を指定
+                        'dot_size': [0, 0] # 念のためサイズも0に
+                    })
+                    
+                    # 5. 実データとダミーデータを結合
+                    df_map_padded = pd.concat([df_map, dummy_data], ignore_index=True)
+                    
+                    # 6. カラーとサイズを列指定に変更してマップを描画
+                    st.map(df_map_padded, latitude='latitude', longitude='longitude', color='dot_color', size='dot_size', height=250)
+                    
                     st.divider()
                     st.markdown("**📍 過去の記録（場所別）**")
                     unique_locations = sorted(df_loc['location_name'].unique().tolist())
+
                     selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, label_visibility="collapsed")
                     if selected_loc:
                         loc_filtered = df_loc[df_loc['location_name'] == selected_loc].sort_values(by='record_date', ascending=False)
