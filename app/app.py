@@ -174,21 +174,21 @@ try:
                     lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
                     lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
                     
-                    # 2. 描画範囲を広げるための余白（20%増し、最低0.01度 = 約1km）
-                    lat_pad = max((lat_max - lat_min) * 0.2, 0.01)
-                    lon_pad = max((lon_max - lon_min) * 0.2, 0.01)
+                    # 2. 🔥 描画範囲を広げるための余白を大幅に強化（80%増し、最低0.05度 = 約5km強）
+                    lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
+                    lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
                     
                     # 3. 実際のデータ
                     df_map['dot_color'] = '#39FF14'
                     df_map['dot_size'] = 150
                     
-                    # 4. 🔥 GEʍlNEʍ Hack: エンジンに無視されないステルスポイント
+                    # 4. 🔥 GEʍlNEʍ Hack: エンジンに確実に認識させる極小・極薄のアンカーポイント
                     dummy_data = pd.DataFrame({
                         'latitude': [lat_min - lat_pad, lat_max + lat_pad],
                         'longitude': [lon_min - lon_pad, lon_max + lon_pad],
                         'location_name': ['dummy', 'dummy'],
-                        'dot_color': ['#00000001', '#00000001'], # 完全な00(透明)ではなく01(ほぼ透明)でカリングを回避
-                        'dot_size': [10, 10] # サイズ0だと除外されるため、10を持たせる
+                        'dot_color': ['#39FF1405', '#39FF1405'], # 実データと同じ緑ベースの極薄(アルファ値05)
+                        'dot_size': [1, 1] # 無視されない極小サイズ(1)
                     })
                     
                     # 5. 実データとダミーデータを結合
