@@ -168,30 +168,27 @@ try:
                 st.markdown("### 🗺️ 場所から探す")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 if not df_loc.empty:
-                    # SettingWithCopyWarning を防ぐために .copy() を追加
                     df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude']).copy()
                     
-                    # --- 🔥 GEʍlNEʍ Hack: 見えないダミーポイントで描画範囲（縮尺）を広げる ---
                     # 1. 緯度経度の最大・最小値を計算
                     lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
                     lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
                     
-                    # 2. 描画範囲を広げるための余白（20%増し）を計算
-                    # データが1箇所しかない場合のゼロ除算や無変化を防ぐため、最低でも0.01の余白を確保
+                    # 2. 描画範囲を広げるための余白（20%増し、最低0.01度 = 約1km）
                     lat_pad = max((lat_max - lat_min) * 0.2, 0.01)
                     lon_pad = max((lon_max - lon_min) * 0.2, 0.01)
                     
-                    # 3. 実際のデータに色とサイズの列を追加
+                    # 3. 実際のデータ
                     df_map['dot_color'] = '#39FF14'
                     df_map['dot_size'] = 150
                     
-                    # 4. 枠を広げるための「完全透明でサイズ0」のダミーデータを外側に2点配置
+                    # 4. 🔥 GEʍlNEʍ Hack: エンジンに無視されないステルスポイント
                     dummy_data = pd.DataFrame({
                         'latitude': [lat_min - lat_pad, lat_max + lat_pad],
                         'longitude': [lon_min - lon_pad, lon_max + lon_pad],
                         'location_name': ['dummy', 'dummy'],
-                        'dot_color': ['#00000000', '#00000000'], # 8桁Hexで透明を指定
-                        'dot_size': [0, 0] # 念のためサイズも0に
+                        'dot_color': ['#00000001', '#00000001'], # 完全な00(透明)ではなく01(ほぼ透明)でカリングを回避
+                        'dot_size': [10, 10] # サイズ0だと除外されるため、10を持たせる
                     })
                     
                     # 5. 実データとダミーデータを結合
