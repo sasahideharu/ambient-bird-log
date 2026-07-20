@@ -443,6 +443,7 @@ try:
                             st.rerun()
 
         # --- 📅 日付の詳細画面 ---
+        # --- 📅 日付の詳細画面 ---
         elif st.session_state.page == 'date_detail':
             # 🔥 疑似タブナビゲーション（緑の強調なし）
             col_nav1, col_nav2 = st.columns(2)
@@ -466,40 +467,62 @@ try:
                 visited_locations = day_data['location_name'].dropna().unique()
                 loc_text = "、".join(visited_locations) if len(visited_locations) > 0 else "場所不明"
                 st.info(f"📍 **その日に行った場所:** {loc_text}")
-                st.markdown(f"### 🐦 その日の鳥 (計 {len(day_data)} 件)")
                 
-                day_data_sorted = day_data.sort_values(by='confidence', ascending=False)
+                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- 🔥 上位10件をスライスして表示 ---
-                current_limit = st.session_state[count_key]
-                day_data_to_show = day_data_sorted.head(current_limit)
+                # --- 🔥 NEW: 信頼性ゲージ ---
+                min_confidence = st.slider(
+                    "信頼度で絞り込む", 
+                    min_value=0, 
+                    max_value=100, 
+                    value=60, 
+                    format="%d%%", 
+                    key=f"slider_conf_date_{target_date}"
+                )
                 
-                for index, row in day_data_to_show.iterrows():
-                    with st.container():
-                        col1, col2 = st.columns([3, 2])
-                        wav_filename = row['wav_filename']
-                        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
-                        
-                        with col1:
-                            confidence_pct = int(row['confidence'] * 100)
-                            st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}")
-                            st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
+                # ゲージの値でデータを事前フィルタリング
+                day_data = day_data[day_data['confidence'] >= (min_confidence / 100.0)]
+                
+                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+                
+                if day_data.empty:
+                    st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
+                else:
+                    # フィルタリング後の件数を表示
+                    st.markdown(f"### 🐦 その日の鳥 (計 {len(day_data)} 件)")
+                    
+                    day_data_sorted = day_data.sort_values(by='confidence', ascending=False)
+                    
+                    # --- 🔥 上位10件をスライスして表示 ---
+                    current_limit = st.session_state[count_key]
+                    day_data_to_show = day_data_sorted.head(current_limit)
+                    
+                    for index, row in day_data_to_show.iterrows():
+                        with st.container():
+                            col1, col2 = st.columns([3, 2])
+                            wav_filename = row['wav_filename']
+                            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
                             
-                        with col2:
-                            # 表示された10件は無条件で物理カット＆自動ロード
-                            try:
-                                with st.spinner("Loading..."):
-                                    sliced_audio, actual_start, actual_end = get_sliced_remote_wav(public_url, float(row['start_sec']), float(row['end_sec']))
-                                st.audio(sliced_audio, format="audio/wav")
-                            except Exception as e:
-                                st.error(f"ロードエラー: {e}")
-                    st.divider()
-                
-                # --- 🔥 10件追加ロードボタン ---
-                if current_limit < len(day_data):
-                    if st.button("🔽 さらに10件読み込む", use_container_width=True, key=f"btn_load_more_date_{target_date}"):
-                        st.session_state[count_key] += 10
-                        st.rerun()
+                            with col1:
+                                confidence_pct = int(row['confidence'] * 100)
+                                st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}")
+                                st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
+                                
+                            with col2:
+                                # 表示された10件は無条件で物理カット＆自動ロード
+                                try:
+                                    with st.spinner("Loading..."):
+                                        sliced_audio, actual_start, actual_end = get_sliced_remote_wav(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    st.audio(sliced_audio, format="audio/wav")
+                                except Exception as e:
+                                    st.error(f"ロードエラー: {e}")
+                        st.divider()
+                    
+                    # --- 🔥 10件追加ロードボタン ---
+                    if current_limit < len(day_data):
+                        if st.button("🔽 さらに10件読み込む", use_container_width=True, key=f"btn_load_more_date_{target_date}"):
+                            st.session_state[count_key] += 10
+                            st.rerun()
 
         elif st.session_state.page == 'loc_detail':
             # 🔥 疑似タブナビゲーション（緑の強調なし）
