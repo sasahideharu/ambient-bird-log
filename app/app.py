@@ -134,6 +134,7 @@ def main():
             tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
 
         # --- タブ: 鳥から探す ---
+        # --- タブ: 鳥から探す ---
         with tab_bird:
             st.markdown("### 🐦 鳥から探す")
             unique_birds = sorted(df_all['common_name'].dropna().unique().tolist())
@@ -142,6 +143,50 @@ def main():
             if selected_main_bird != "選択してください":
                 go_to_bird_detail(selected_main_bird)
                 st.rerun()
+            
+            # ==========================================
+            # 🔥 ここから下を新規追加：サムネイルギャラリー
+            # ==========================================
+            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+            
+            # 画像が保存されているバケット名（※実際の環境に合わせて変更してくれ）
+            IMAGE_BUCKET = "bird-images" 
+            
+            try:
+                # ストレージから画像一覧を抽出
+                img_list = supabase.storage.from_(IMAGE_BUCKET).list()
+                img_names = [img['name'] for img in img_list if img['name'] != '.emptyFolderPlaceholder']
+                
+                # 鳥の和名と画像ファイルをマッチング
+                bird_img_map = {}
+                for bird in unique_birds:
+                    for img_name in img_names:
+                        # 画像ファイル名が鳥の名前を含んでいれば採用
+                        if bird in img_name: 
+                            bird_img_map[bird] = img_name
+                            break
+                            
+                if bird_img_map:
+                    # 3カラムのグリッドレイアウトを作成
+                    cols = st.columns(3)
+                    col_idx = 0
+                    for bird, img_file in bird_img_map.items():
+                        with cols[col_idx % 3]:
+                            # 画像のパブリックURLを取得して表示
+                            img_url = supabase.storage.from_(IMAGE_BUCKET).get_public_url(img_file)
+                            st.image(img_url)
+                            # 画像の下に詳細画面へのジャンプボタンを配置
+                            if st.button(bird, key=f"btn_thumb_{bird}", use_container_width=True):
+                                go_to_bird_detail(bird)
+                                st.rerun()
+                        col_idx += 1
+            except Exception as e:
+                # バケットが存在しない等のエラー時はサイレントにスキップ
+                pass
+
+            st.divider()
+            st.markdown("**📅 過去の記録（日付別）**")
+            # ... (以下既存のコードが続く) ...
                 
             st.divider()
             st.markdown("**📅 過去の記録（日付別）**")
