@@ -296,15 +296,24 @@ try:
                         else:
                             with st.spinner("Supabaseへ同期中..."):
                                 try:
-                                    # 1. WAVファイルをStorageへ直接アップロード
+                                    # 1. WAVファイルをMP3に圧縮してStorageへアップロード
                                     if uploaded_wavs:
                                         for wav_file in uploaded_wavs:
+                                            # 🔥 GEʍlNEʍ Hack: メモリ上でWAVをMP3に圧縮
+                                            audio = AudioSegment.from_file(wav_file)
+                                            mp3_io = io.BytesIO()
+                                            audio.export(mp3_io, format="mp3", bitrate="192k")
+                                            mp3_io.seek(0)
+                                            
+                                            # 拡張子を.mp3に変更
+                                            mp3_filename = wav_file.name.rsplit('.', 1)[0] + ".mp3"
+                                            
                                             supabase.storage.from_(BUCKET_NAME).upload(
-                                                wav_file.name, 
-                                                wav_file.getvalue(), 
-                                                file_options={"upsert": "true"}
+                                                mp3_filename, 
+                                                mp3_io.read(), 
+                                                file_options={"content-type": "audio/mpeg", "upsert": "true"}
                                             )
-                                        st.success(f"🎵 {len(uploaded_wavs)} 個のWAVファイルをStorageにアップロードしたぜ！")
+                                        st.success(f"🎵 {len(uploaded_wavs)} 個の音声をMP3に圧縮してアップロードしたぜ！")
 
                                     # 2. CSVデータをパースしてDBへ登録
                                     if uploaded_csvs:
@@ -313,7 +322,8 @@ try:
                                             df_csv = pd.read_csv(uploaded_csv)
                                             df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
                                             if 'File' in df_csv.columns:
-                                                df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)))
+                                                # 🔥 DBに登録するファイル名も自動で.mp3に書き換え
+                                                df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)).rsplit('.', 1)[0] + ".mp3")
                                                 df_csv = df_csv.drop(columns=['File'])
                                             df_csv['location_name'] = loc_name_input
                                             df_csv['latitude'] = lat_input
