@@ -665,6 +665,7 @@ try:
                             try:
                                 with st.spinner("Loading Audio..."):
                                     sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                # 余計なマイナスマージンを完全削除
                                 badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
                                 audio_loaded = True
                             except Exception as e:
@@ -672,20 +673,24 @@ try:
                                 audio_loaded = False
                                 error_msg = e
 
-                            col1, col2 = st.columns([3, 2])
-                            with col1:
-                                confidence_pct = int(row['confidence'] * 100)
-                                st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}")
-                                # 🔥 ボタンとプログレスバーの間にバッジを配置
-                                st.markdown(f"<div style='margin-top:-6px; margin-bottom:6px;'>{badge}</div>", unsafe_allow_html=True)
-                                st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
+                            confidence_pct = int(row['confidence'] * 100)
+                            
+                            # 🔥 カラム分けの比率を変え、ボタンとバッジだけを横に並べる
+                            col_head1, col_head2 = st.columns([2, 3])
+                            with col_head1:
+                                st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}", use_container_width=True)
+                            with col_head2:
+                                # スマホの幅でも被らないように適度な上余白を設定
+                                st.markdown(f"<div style='padding-top: 8px;'>{badge}</div>", unsafe_allow_html=True)
+                            
+                            # 🔥 ゲージとプレイヤーはカラムの「外」に出し、フル幅で贅沢に使う
+                            st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
+                            
+                            if audio_loaded:
+                                st.audio(sliced_audio, format="audio/mpeg")
+                            else:
+                                st.error(f"ロードエラー: {error_msg}")
                                 
-                            with col2:
-                                # プレイヤー単体を描画（干渉なし）
-                                if audio_loaded:
-                                    st.audio(sliced_audio, format="audio/mpeg")
-                                else:
-                                    st.error(f"ロードエラー: {error_msg}")
                         st.divider()
                     
                     # --- 🔥 10件追加ロードボタン ---
