@@ -35,6 +35,7 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
         raise Exception("ファイルのダウンロードに失敗したぜ。")
         
     audio = AudioSegment.from_file(io.BytesIO(response.content))
+    channels = audio.channels # 🔥 GEʍlNEʍ Hack: 1ならモノラル、2ならステレオ
     
     start_ms = max(0, int((original_start - 1.5) * 1000))
     end_ms = min(len(audio), int((original_end + 1.5) * 1000))
@@ -45,7 +46,8 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     sliced_audio.export(out_io, format="mp3", bitrate="192k")
     out_io.seek(0)
     
-    return out_io, start_ms / 1000.0, end_ms / 1000.0
+    # 🔥 戻り値の最後に channels を追加
+    return out_io, start_ms / 1000.0, end_ms / 1000.0, channels
 
 # --- 2.5. 日付情報の自動抽出と曜日の計算 ---
 def extract_date(filename):
@@ -507,7 +509,13 @@ try:
                             # MP3関数でスライスして表示
                             try:
                                 with st.spinner("Loading Audio..."):
-                                    sliced_audio, actual_start, actual_end = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    # 🔥 受け取る変数に channels を追加
+                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                
+                                # 🔥 GEʍlNEʍ Hack: ステレオ/モノラル判定バッジ
+                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px;'>🔈 Mono</span>"
+                                st.markdown(f"<div style='text-align: right; margin-bottom: -5px;'>{badge}</div>", unsafe_allow_html=True)
+                                
                                 st.audio(sliced_audio, format="audio/mpeg")
                             except Exception as e:
                                 st.error(f"ロードエラー: {e}")
@@ -658,7 +666,13 @@ try:
                                 # MP3関数でスライスして表示
                                 try:
                                     with st.spinner("Loading..."):
-                                        sliced_audio, actual_start, actual_end = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                        # 🔥 受け取る変数に channels を追加
+                                        sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    
+                                    # 🔥 GEʍlNEʍ Hack: ステレオ/モノラル判定バッジ
+                                    badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px;'>🔈 Mono</span>"
+                                    st.markdown(f"<div style='text-align: right; margin-bottom: -5px;'>{badge}</div>", unsafe_allow_html=True)
+                                    
                                     st.audio(sliced_audio, format="audio/mpeg")
                                 except Exception as e:
                                     st.error(f"ロードエラー: {e}")
