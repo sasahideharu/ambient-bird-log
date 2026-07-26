@@ -503,22 +503,51 @@ try:
                 
                 st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- 🔥 NEW: 鳥で絞り込むフィルター ---
+                # --- 🔥 NEW: 鳥で絞り込むフィルター (サムネ版) ---
                 if not day_data.empty:
-                    # 信頼度フィルターを通過した鳥だけをリストアップする
-                    available_birds = ["鳥で絞り込む (すべて)"] + sorted(day_data['common_name'].dropna().unique().tolist())
-                    selected_bird_filter = st.selectbox(
-                        "鳥を選択", 
-                        available_birds, 
-                        key=f"filter_bird_date_{target_date}", 
-                        label_visibility="collapsed"
-                    )
+                    available_birds = sorted(day_data['common_name'].dropna().unique().tolist())
                     
+                    # セッションステートで現在選択されている鳥を管理
+                    filter_state_key = f"filter_bird_date_{target_date}"
+                    if filter_state_key not in st.session_state:
+                        st.session_state[filter_state_key] = "すべて"
+                        
+                    st.markdown("<div style='font-size: 14px; margin-bottom: 8px;'>🐦 鳥で絞り込む</div>", unsafe_allow_html=True)
+
+                    # トップページの1/3サイズを目指すため、9カラムに分割
+                    cols = st.columns(9)
+                    
+                    # 1つ目は「すべて（リセット）」ボタン
+                    with cols[0]:
+                        st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>All</span></div>", unsafe_allow_html=True)
+                        if st.button("解除", key=f"btn_filter_all_{target_date}", use_container_width=True):
+                            st.session_state[filter_state_key] = "すべて"
+                            st.rerun()
+
+                    # 2つ目以降に鳥のサムネイルを配置
+                    for i, bird_name in enumerate(available_birds):
+                        col_idx = (i + 1) % 9
+                        with cols[col_idx]:
+                            img_url = bird_images.get(bird_name)
+                            if img_url:
+                                st.image(img_url, use_container_width=True)
+                            else:
+                                st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:8px;'>No Img</span></div>", unsafe_allow_html=True)
+                            
+                            # スマホでも文字が溢れないように名前は先頭3文字にカット
+                            btn_label = "✅" if st.session_state[filter_state_key] == bird_name else bird_name[:3]
+                            if st.button(btn_label, key=f"btn_filter_{bird_name}_{target_date}", use_container_width=True, help=bird_name):
+                                # すでに選択されている鳥をもう一度押したら解除するトグル仕様
+                                if st.session_state[filter_state_key] == bird_name:
+                                    st.session_state[filter_state_key] = "すべて"
+                                else:
+                                    st.session_state[filter_state_key] = bird_name
+                                st.rerun()
+
                     # 選択された鳥でさらにフィルタリング
-                    if selected_bird_filter != "鳥で絞り込む (すべて)":
-                        day_data = day_data[day_data['common_name'] == selected_bird_filter]
-                
-                st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+                    if st.session_state[filter_state_key] != "すべて":
+                        day_data = day_data[day_data['common_name'] == st.session_state[filter_state_key]]
+                        st.info(f"🔍 **{st.session_state[filter_state_key]}** に絞り込み中")
                 
                 if day_data.empty:
                     st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
