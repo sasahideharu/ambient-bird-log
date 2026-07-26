@@ -234,22 +234,65 @@ try:
                     
                     st.divider()
                     st.markdown("**📍 過去の記録（場所別）**")
-                    unique_locations = sorted(df_loc['location_name'].unique().tolist())
+                    
+                    # 1. 選択肢の先頭に「すべての場所」をデフォルトとして追加
+                    unique_locations = ["すべての場所"] + sorted(df_loc['location_name'].unique().tolist())
 
-                    selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, label_visibility="collapsed")
-                    if selected_loc:
-                        loc_filtered = df_loc[df_loc['location_name'] == selected_loc].sort_values(by='record_date', ascending=False)
-                        dates_at_loc = loc_filtered['record_date'].unique()
-                        for date_str in dates_at_loc:
-                            count = len(loc_filtered[loc_filtered['record_date'] == date_str])
+                    # 2. ステート管理（選択中の場所と、表示件数）
+                    loc_count_key = "display_count_loc_tab"
+                    loc_state_key = "selected_loc_tab"
+                    
+                    if loc_count_key not in st.session_state:
+                        st.session_state[loc_count_key] = 10
+                    if loc_state_key not in st.session_state:
+                        st.session_state[loc_state_key] = "すべての場所"
+
+                    # ドロップダウンリストの描画
+                    selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, index=unique_locations.index(st.session_state[loc_state_key]), label_visibility="collapsed")
+                    
+                    # 場所が切り替わったら表示件数を10件にリセットして再描画
+                    if selected_loc != st.session_state[loc_state_key]:
+                        st.session_state[loc_state_key] = selected_loc
+                        st.session_state[loc_count_key] = 10
+                        st.rerun()
+
+                    # 3. データのフィルタリング
+                    if selected_loc == "すべての場所":
+                        loc_filtered = df_loc
+                    else:
+                        loc_filtered = df_loc[df_loc['location_name'] == selected_loc]
+                        
+                    if not loc_filtered.empty:
+                        # 4. 🔥 GEʍlNEʍ Hack: 日付と場所でグループ化し、件数を集計して降順にソート
+                        summary_df = loc_filtered.groupby(['record_date', 'location_name']).size().reset_index(name='count')
+                        summary_df = summary_df.sort_values(by=['record_date', 'location_name'], ascending=[False, True])
+                        
+                        # 10件ずつスライスして表示
+                        current_limit = st.session_state[loc_count_key]
+                        summary_df_to_show = summary_df.head(current_limit)
+                        
+                        for index, row in summary_df_to_show.iterrows():
+                            date_str = row['record_date']
+                            loc_name = row['location_name']
+                            count = row['count']
+                            
                             with st.container():
                                 col1, col2 = st.columns([3, 1])
                                 with col1:
                                     st.markdown(f"### 📅 {date_str}")
-                                    st.caption(f"🎧 検出: {count} 件")
+                                    # 🔥 ここで「どの場所での記録か」を明記する
+                                    st.caption(f"📍 **{loc_name}** ｜ 🎧 検出: {count} 件")
                                 with col2:
-                                    st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_{selected_loc}_{date_str}")
+                                    st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_loc_tab_{loc_name}_{date_str}_{index}")
                             st.divider()
+                            
+                        # 5. 10件追加ロードボタン
+                        if current_limit < len(summary_df):
+                            if st.button("🔽 さらに10件読み込む", use_container_width=True, key="btn_load_more_loc_tab"):
+                                st.session_state[loc_count_key] += 10
+                                st.rerun()
+                    else:
+                        st.info("データが見つからないぜ。")
 
             if is_admin:
                 with tab_admin:
