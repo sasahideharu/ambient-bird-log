@@ -528,16 +528,20 @@ try:
                         
                     st.markdown("<br>**🐦 鳥で絞り込む**", unsafe_allow_html=True)
 
-                    # 🔥 GEʍlNEʍ Hack: 動的にダミー画像を生成する関数
+                    # 🔥 GEʍlNEʍ Hack: 動的にダミー画像を生成する関数 (フォント巨大化＆完全中央揃え版)
                     def create_dummy_image(text, bg_color="#1E1E1E", text_color="#8E8E93"):
                         # 300x300の正方形画像を作成
                         img = Image.new('RGB', (300, 300), color=bg_color)
                         d = ImageDraw.Draw(img)
-                        # 文字を中央に配置する簡易計算
-                        # ※本来はフォントサイズを計算するが、今回はシンプルに固定位置へ
-                        text_x = 150 - (len(text) * 15)
-                        text_y = 135
-                        d.text((text_x, text_y), text, fill=text_color)
+                        
+                        # お前の環境(Pillow 12.3.0)のパワーを使ってデフォルトフォントを巨大化
+                        try:
+                            font = ImageFont.load_default(size=80)
+                        except:
+                            font = ImageFont.load_default()
+                            
+                        # anchor="mm" (Middle-Middle) を使って、(150, 150)のど真ん中に完璧にセンタリング
+                        d.text((150, 150), text, fill=text_color, font=font, anchor="mm")
                         return img
 
                     MAX_COLS = 5
