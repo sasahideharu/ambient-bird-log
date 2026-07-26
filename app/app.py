@@ -497,30 +497,35 @@ try:
                             duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
                             confidence_pct = int(row['confidence'] * 100)
                             
+                            # 🔥 GEʍlNEʍ Hack: プレイヤーを描画する前に音声をロードして判定
+                            try:
+                                with st.spinner("Loading Audio..."):
+                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                # バッジのCSSから余計なマージンを削除
+                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
+                                audio_loaded = True
+                            except Exception as e:
+                                badge = ""
+                                audio_loaded = False
+                                error_msg = e
+                            
                             col_meta1, col_meta2 = st.columns([1, 1])
                             with col_meta1:
-                                st.markdown(f"**信頼度:** `{confidence_pct}%`")
+                                # 🔥 信頼度の横にバッジを自然に配置
+                                st.markdown(f"**信頼度:** `{confidence_pct}%` &nbsp; {badge}", unsafe_allow_html=True)
                                 st.markdown(f"**再生時間:** `{duration}秒`")
                             with col_meta2:
                                 st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
                                 loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
                                 st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
                             
-                            # MP3関数でスライスして表示
-                            try:
-                                with st.spinner("Loading Audio..."):
-                                    # 🔥 受け取る変数に channels を追加
-                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
-                                
-                                # 🔥 GEʍlNEʍ Hack: ステレオ/モノラル判定バッジ
-                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px;'>🔈 Mono</span>"
-                                st.markdown(f"<div style='text-align: right; margin-bottom: -5px;'>{badge}</div>", unsafe_allow_html=True)
-                                
+                            # プレイヤー単体を描画（これで絶対に干渉しない）
+                            if audio_loaded:
                                 st.audio(sliced_audio, format="audio/mpeg")
-                            except Exception as e:
-                                st.error(f"ロードエラー: {e}")
+                            else:
+                                st.error(f"ロードエラー: {error_msg}")
                         st.divider()
-                    
+                                            
                     # 10件追加ロードボタン
                     if current_limit < len(bird_data):
                         if st.button("🔽 さらに10件読み込む", use_container_width=True, key=f"btn_load_more_bird_{target_bird}"):
@@ -653,29 +658,34 @@ try:
                     
                     for index, row in day_data_to_show.iterrows():
                         with st.container():
-                            col1, col2 = st.columns([3, 2])
                             wav_filename = row['wav_filename']
                             public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
                             
+                            # 🔥 プレイヤーを描画する前に音声をロード
+                            try:
+                                with st.spinner("Loading Audio..."):
+                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
+                                audio_loaded = True
+                            except Exception as e:
+                                badge = ""
+                                audio_loaded = False
+                                error_msg = e
+
+                            col1, col2 = st.columns([3, 2])
                             with col1:
                                 confidence_pct = int(row['confidence'] * 100)
                                 st.button(f"**{row['common_name']}**", on_click=go_to_bird_detail, args=(row['common_name'],), key=f"link_bird_date_{index}")
+                                # 🔥 ボタンとプログレスバーの間にバッジを配置
+                                st.markdown(f"<div style='margin-top:-6px; margin-bottom:6px;'>{badge}</div>", unsafe_allow_html=True)
                                 st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
                                 
                             with col2:
-                                # MP3関数でスライスして表示
-                                try:
-                                    with st.spinner("Loading..."):
-                                        # 🔥 受け取る変数に channels を追加
-                                        sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
-                                    
-                                    # 🔥 GEʍlNEʍ Hack: ステレオ/モノラル判定バッジ
-                                    badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px;'>🔈 Mono</span>"
-                                    st.markdown(f"<div style='text-align: right; margin-bottom: -5px;'>{badge}</div>", unsafe_allow_html=True)
-                                    
+                                # プレイヤー単体を描画（干渉なし）
+                                if audio_loaded:
                                     st.audio(sliced_audio, format="audio/mpeg")
-                                except Exception as e:
-                                    st.error(f"ロードエラー: {e}")
+                                else:
+                                    st.error(f"ロードエラー: {error_msg}")
                         st.divider()
                     
                     # --- 🔥 10件追加ロードボタン ---
