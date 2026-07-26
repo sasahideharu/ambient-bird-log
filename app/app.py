@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from pydub import AudioSegment  # scipy.io.wavfile から変更
+from pydub import AudioSegment
 import uuid
 import math
 import streamlit.components.v1 as components
@@ -286,34 +286,27 @@ try:
                         lon_input = st.number_input("🌐 経度", format="%.6f", value=initial_lon)
                         
                     uploaded_csvs = st.file_uploader("📄 BirdNETのCSVを選択 (複数OK)", type=["csv"], accept_multiple_files=True)
-                    uploaded_wavs = st.file_uploader("🎵 録音データ(WAV)を選択 (複数OK)", type=["wav"], accept_multiple_files=True)
+                    # 🔥 ここをMP3対応に変更！
+                    uploaded_mp3s = st.file_uploader("🎵 録音データ(MP3)を選択 (複数OK)", type=["mp3"], accept_multiple_files=True)
                     
                     if st.button("🚀 DB & Storageへ一括登録", use_container_width=True):
                         if not loc_name_input:
                             st.warning("⚠️ 場所の名前を入力してくれ！")
-                        elif not uploaded_csvs and not uploaded_wavs:
-                            st.warning("⚠️ CSVかWAVファイルを選んでくれ！")
+                        elif not uploaded_csvs and not uploaded_mp3s:
+                            st.warning("⚠️ CSVかMP3ファイルを選んでくれ！")
                         else:
                             with st.spinner("Supabaseへ同期中..."):
                                 try:
-                                    # 1. WAVファイルをMP3に圧縮してStorageへアップロード
-                                    if uploaded_wavs:
-                                        for wav_file in uploaded_wavs:
-                                            # 🔥 GEʍlNEʍ Hack: メモリ上でWAVをMP3に圧縮
-                                            audio = AudioSegment.from_file(wav_file)
-                                            mp3_io = io.BytesIO()
-                                            audio.export(mp3_io, format="mp3", bitrate="192k")
-                                            mp3_io.seek(0)
-                                            
-                                            # 拡張子を.mp3に変更
-                                            mp3_filename = wav_file.name.rsplit('.', 1)[0] + ".mp3"
-                                            
+                                    # 1. ローカルで変換済みのMP3をそのままStorageへアップロード
+                                    if uploaded_mp3s:
+                                        for mp3_file in uploaded_mp3s:
+                                            # 🔥 圧縮処理を削ぎ落とし、ファイルを直接クラウドへスルーパス
                                             supabase.storage.from_(BUCKET_NAME).upload(
-                                                mp3_filename, 
-                                                mp3_io.read(), 
+                                                mp3_file.name, 
+                                                mp3_file.getvalue(), 
                                                 file_options={"content-type": "audio/mpeg", "upsert": "true"}
                                             )
-                                        st.success(f"🎵 {len(uploaded_wavs)} 個の音声をMP3に圧縮してアップロードしたぜ！")
+                                        st.success(f"🎵 {len(uploaded_mp3s)} 個のMP3ファイルをStorageにアップロードしたぜ！")
 
                                     # 2. CSVデータをパースしてDBへ登録
                                     if uploaded_csvs:
@@ -322,7 +315,7 @@ try:
                                             df_csv = pd.read_csv(uploaded_csv)
                                             df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
                                             if 'File' in df_csv.columns:
-                                                # 🔥 DBに登録するファイル名も自動で.mp3に書き換え
+                                                # DBに登録するファイル名を強制的に.mp3に書き換え
                                                 df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)).rsplit('.', 1)[0] + ".mp3")
                                                 df_csv = df_csv.drop(columns=['File'])
                                             df_csv['location_name'] = loc_name_input
