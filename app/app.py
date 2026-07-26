@@ -60,42 +60,56 @@ def extract_date(filename):
             return "不明な日付"
     return "不明な日付"
 
-# --- 2.8. 画面遷移のコントロール（Session State） ---
-if 'page' not in st.session_state: st.session_state.page = 'main'
-if 'selected_date' not in st.session_state: st.session_state.selected_date = None
-if 'selected_bird' not in st.session_state: st.session_state.selected_bird = None
-if 'selected_loc' not in st.session_state: st.session_state.selected_loc = None
-if 'loaded_audio' not in st.session_state: st.session_state.loaded_audio = set()
+# --- 2.8. 画面遷移のコントロール（Session State & Query Params） ---
+# アプリを開いた瞬間に、URLにパラメータがあれば読み込む
+if 'page' not in st.session_state: 
+    st.session_state.page = st.query_params.get('page', 'main')
+if 'selected_date' not in st.session_state: 
+    st.session_state.selected_date = st.query_params.get('date', None)
+if 'selected_bird' not in st.session_state: 
+    st.session_state.selected_bird = st.query_params.get('bird', None)
+if 'selected_loc' not in st.session_state: 
+    st.session_state.selected_loc = st.query_params.get('loc', None)
+if 'loaded_audio' not in st.session_state: 
+    st.session_state.loaded_audio = set()
 
 def load_audio_clip(audio_key):
     st.session_state.loaded_audio.add(audio_key)
 
+# ページ遷移時、セッションステートと一緒にブラウザのURLも書き換える
 def go_to_date_detail(date_str):
     st.session_state.page = 'date_detail'
     st.session_state.selected_date = date_str
+    st.query_params["page"] = "date_detail"
+    st.query_params["date"] = date_str
 
 def go_to_bird_detail(bird_name):
     st.session_state.page = 'bird_detail'
     st.session_state.selected_bird = bird_name
+    st.query_params["page"] = "bird_detail"
+    st.query_params["bird"] = bird_name
 
 def go_to_loc_detail(loc_name):
     st.session_state.page = 'loc_detail'
     st.session_state.selected_loc = loc_name
+    st.query_params["page"] = "loc_detail"
+    st.query_params["loc"] = loc_name
 
-# --- 🔥 ここで鳥用・場所用のメイン遷移関数を定義 ---
 def go_to_main_bird():
     st.session_state.page = 'main'
-    st.session_state.active_main_tab = 0  # 0: 鳥から探す
+    st.session_state.active_main_tab = 0
     st.session_state.selected_date = None
     st.session_state.selected_bird = None
     st.session_state.selected_loc = None
+    st.query_params.clear()
 
 def go_to_main_loc():
     st.session_state.page = 'main'
-    st.session_state.active_main_tab = 1  # 1: 場所から探す
+    st.session_state.active_main_tab = 1
     st.session_state.selected_date = None
     st.session_state.selected_bird = None
     st.session_state.selected_loc = None
+    st.query_params.clear()
 
 # --- 3. メインUI ---
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
