@@ -61,6 +61,13 @@ def extract_date(filename):
         except ValueError:
             return "不明な日付"
     return "不明な日付"
+    
+# 🔥 GEʍlNEʍ Hack: ファイル名から録音開始時間を抽出 (例: _1322.mp3 -> 13:22)
+def extract_recording_time(filename):
+    match = re.search(r'_(\d{2})(\d{2})\.mp3$', filename)
+    if match:
+        return f"{match.group(1)}:{match.group(2)}"
+    return None
 
 # --- 2.8. 画面遷移のコントロール（Session State & Query Params） ---
 # アプリを開いた瞬間に、URLにパラメータがあれば読み込む
@@ -496,6 +503,10 @@ try:
                             public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
                             duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
                             confidence_pct = int(row['confidence'] * 100)
+                            # 🔥 日付画面でもファイル名から録音時間をパースして表示用に成形
+                            rec_time = extract_recording_time(wav_filename)
+                            time_str = f"🕒 {rec_time}" if rec_time else ""
+
                             
                             # 🔥 GEʍlNEʍ Hack: プレイヤーを描画する前に音声をロードして判定
                             try:
@@ -660,6 +671,9 @@ try:
                         with st.container():
                             wav_filename = row['wav_filename']
                             public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
+                            # 🔥 日付画面でもファイル名から録音時間をパースして表示用に成形
+                            rec_time = extract_recording_time(wav_filename)
+                            time_str = f"🕒 {rec_time}" if rec_time else ""
                             
                             # 🔥 プレイヤーを描画する前に音声をロード
                             try:
