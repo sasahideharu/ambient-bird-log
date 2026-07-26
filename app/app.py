@@ -514,7 +514,18 @@ try:
                     # 余白を空けてタイトルの重なりを防止
                     st.markdown("<br>**🐦 鳥で絞り込む**", unsafe_allow_html=True)
 
-                    # 🔥 GEʍlNEʍ Hack: スマホでの潰れを防ぐため、1行5列で折り返す
+                    # 🔥 GEʍlNEʍ Hack: 見えない<p>タグの余白と行間を完全に破壊する専用CSS
+                    st.markdown("""
+                        <style>
+                        /* thumb-hackクラスを持つ要素を包む<p>タグを狙い撃ちして、テキスト用余白を無効化 */
+                        div[data-testid="stMarkdownContainer"]:has(.thumb-hack) p {
+                            margin-bottom: 0px !important;
+                            line-height: 0 !important;
+                            padding: 0 !important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+
                     MAX_COLS = 5
                     filter_items = ["ALL_RESET"] + available_birds
                     
@@ -526,8 +537,8 @@ try:
                         for j, item in enumerate(chunk):
                             with cols[j]:
                                 if item == "ALL_RESET":
-                                    # Allボタン用のダミー画像（スタイリッシュな正方形）
-                                    st.markdown("<div style='background-color:#262730; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'><span style='color:#FFFFFF; font-size:14px; font-weight:bold;'>All</span></div>", unsafe_allow_html=True)
+                                    # Allボタン用のダミー画像（クラス thumb-hack 付与）
+                                    st.markdown("<div class='thumb-hack' style='background-color:#262730; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'><span style='color:#FFFFFF; font-size:14px; font-weight:bold;'>All</span></div>", unsafe_allow_html=True)
                                     if st.button("解除", key=f"btn_filter_all_{target_date}", use_container_width=True):
                                         st.session_state[filter_state_key] = "すべて"
                                         st.rerun()
@@ -537,7 +548,8 @@ try:
                                     if img_url:
                                         st.image(img_url, use_container_width=True)
                                     else:
-                                        st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", unsafe_allow_html=True)
+                                        # No Imgの方もクラス thumb-hack 付与
+                                        st.markdown("<div class='thumb-hack' style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", unsafe_allow_html=True)
                                     
                                     # 選択されている場合は色を変えるかチェックマーク
                                     is_selected = (st.session_state[filter_state_key] == item)
