@@ -503,46 +503,52 @@ try:
                 
                 st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- 🔥 NEW: 鳥で絞り込むフィルター (サムネ版) ---
+                # --- 🔥 NEW: 鳥で絞り込むフィルター (サムネ版・UI改善) ---
                 if not day_data.empty:
                     available_birds = sorted(day_data['common_name'].dropna().unique().tolist())
                     
-                    # セッションステートで現在選択されている鳥を管理
                     filter_state_key = f"filter_bird_date_{target_date}"
                     if filter_state_key not in st.session_state:
                         st.session_state[filter_state_key] = "すべて"
                         
-                    st.markdown("<div style='font-size: 14px; margin-bottom: 8px;'>🐦 鳥で絞り込む</div>", unsafe_allow_html=True)
+                    # 余白を空けてタイトルの重なりを防止
+                    st.markdown("<br>**🐦 鳥で絞り込む**", unsafe_allow_html=True)
 
-                    # トップページの1/3サイズを目指すため、9カラムに分割
-                    cols = st.columns(9)
+                    # 🔥 GEʍlNEʍ Hack: スマホでの潰れを防ぐため、1行5列で折り返す
+                    MAX_COLS = 5
+                    filter_items = ["ALL_RESET"] + available_birds
                     
-                    # 1つ目は「すべて（リセット）」ボタン
-                    with cols[0]:
-                        st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>All</span></div>", unsafe_allow_html=True)
-                        if st.button("解除", key=f"btn_filter_all_{target_date}", use_container_width=True):
-                            st.session_state[filter_state_key] = "すべて"
-                            st.rerun()
-
-                    # 2つ目以降に鳥のサムネイルを配置
-                    for i, bird_name in enumerate(available_birds):
-                        col_idx = (i + 1) % 9
-                        with cols[col_idx]:
-                            img_url = bird_images.get(bird_name)
-                            if img_url:
-                                st.image(img_url, use_container_width=True)
-                            else:
-                                st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:8px;'>No Img</span></div>", unsafe_allow_html=True)
-                            
-                            # スマホでも文字が溢れないように名前は先頭3文字にカット
-                            btn_label = "✅" if st.session_state[filter_state_key] == bird_name else bird_name[:3]
-                            if st.button(btn_label, key=f"btn_filter_{bird_name}_{target_date}", use_container_width=True, help=bird_name):
-                                # すでに選択されている鳥をもう一度押したら解除するトグル仕様
-                                if st.session_state[filter_state_key] == bird_name:
-                                    st.session_state[filter_state_key] = "すべて"
+                    # アイテムをMAX_COLSごとに分割して描画（自動折り返し）
+                    for i in range(0, len(filter_items), MAX_COLS):
+                        cols = st.columns(MAX_COLS)
+                        chunk = filter_items[i:i + MAX_COLS]
+                        
+                        for j, item in enumerate(chunk):
+                            with cols[j]:
+                                if item == "ALL_RESET":
+                                    # Allボタン用のダミー画像（スタイリッシュな正方形）
+                                    st.markdown("<div style='background-color:#262730; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'><span style='color:#FFFFFF; font-size:14px; font-weight:bold;'>All</span></div>", unsafe_allow_html=True)
+                                    if st.button("解除", key=f"btn_filter_all_{target_date}", use_container_width=True):
+                                        st.session_state[filter_state_key] = "すべて"
+                                        st.rerun()
                                 else:
-                                    st.session_state[filter_state_key] = bird_name
-                                st.rerun()
+                                    # 鳥のサムネイル画像
+                                    img_url = bird_images.get(item)
+                                    if img_url:
+                                        st.image(img_url, use_container_width=True)
+                                    else:
+                                        st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", unsafe_allow_html=True)
+                                    
+                                    # 選択されている場合は色を変えるかチェックマーク
+                                    is_selected = (st.session_state[filter_state_key] == item)
+                                    btn_label = "✅" if is_selected else item[:3]
+                                    
+                                    if st.button(btn_label, key=f"btn_filter_{item}_{target_date}", use_container_width=True, help=item):
+                                        if is_selected:
+                                            st.session_state[filter_state_key] = "すべて"
+                                        else:
+                                            st.session_state[filter_state_key] = item
+                                        st.rerun()
 
                     # 選択された鳥でさらにフィルタリング
                     if st.session_state[filter_state_key] != "すべて":
