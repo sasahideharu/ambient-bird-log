@@ -11,6 +11,7 @@ from pydub import AudioSegment
 import uuid
 import math
 import streamlit.components.v1 as components
+from PIL import Image, ImageDraw, ImageFont # 🔥 これを追加
 
 # --- 1. 環境変数とSupabase接続 ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -503,7 +504,7 @@ try:
                 
                 st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
-                # --- 🔥 NEW: 鳥で絞り込むフィルター (サムネ版・UI改善) ---
+                # --- 🔥 NEW: 鳥で絞り込むフィルター (完全画像化による高さ統一) ---
                 if not day_data.empty:
                     available_birds = sorted(day_data['common_name'].dropna().unique().tolist())
                     
@@ -511,25 +512,23 @@ try:
                     if filter_state_key not in st.session_state:
                         st.session_state[filter_state_key] = "すべて"
                         
-                    # 余白を空けてタイトルの重なりを防止
                     st.markdown("<br>**🐦 鳥で絞り込む**", unsafe_allow_html=True)
 
-                    # 🔥 GEʍlNEʍ Hack: 見えない<p>タグの余白と行間を完全に破壊する専用CSS
-                    st.markdown("""
-                        <style>
-                        /* thumb-hackクラスを持つ要素を包む<p>タグを狙い撃ちして、テキスト用余白を無効化 */
-                        div[data-testid="stMarkdownContainer"]:has(.thumb-hack) p {
-                            margin-bottom: 0px !important;
-                            line-height: 0 !important;
-                            padding: 0 !important;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
+                    # 🔥 GEʍlNEʍ Hack: 動的にダミー画像を生成する関数
+                    def create_dummy_image(text, bg_color="#1E1E1E", text_color="#8E8E93"):
+                        # 300x300の正方形画像を作成
+                        img = Image.new('RGB', (300, 300), color=bg_color)
+                        d = ImageDraw.Draw(img)
+                        # 文字を中央に配置する簡易計算
+                        # ※本来はフォントサイズを計算するが、今回はシンプルに固定位置へ
+                        text_x = 150 - (len(text) * 15)
+                        text_y = 135
+                        d.text((text_x, text_y), text, fill=text_color)
+                        return img
 
                     MAX_COLS = 5
                     filter_items = ["ALL_RESET"] + available_birds
                     
-                    # アイテムをMAX_COLSごとに分割して描画（自動折り返し）
                     for i in range(0, len(filter_items), MAX_COLS):
                         cols = st.columns(MAX_COLS)
                         chunk = filter_items[i:i + MAX_COLS]
@@ -537,8 +536,10 @@ try:
                         for j, item in enumerate(chunk):
                             with cols[j]:
                                 if item == "ALL_RESET":
-                                    # Allボタン用のダミー画像（クラス thumb-hack 付与）
-                                    st.markdown("<div class='thumb-hack' style='background-color:#262730; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);'><span style='color:#FFFFFF; font-size:14px; font-weight:bold;'>All</span></div>", unsafe_allow_html=True)
+                                    # Allボタン用の画像を動的生成して表示
+                                    all_img = create_dummy_image("ALL", bg_color="#262730", text_color="#FFFFFF")
+                                    st.image(all_img, use_container_width=True)
+                                    
                                     if st.button("解除", key=f"btn_filter_all_{target_date}", use_container_width=True):
                                         st.session_state[filter_state_key] = "すべて"
                                         st.rerun()
@@ -548,10 +549,11 @@ try:
                                     if img_url:
                                         st.image(img_url, use_container_width=True)
                                     else:
-                                        # No Imgの方もクラス thumb-hack 付与
-                                        st.markdown("<div class='thumb-hack' style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", unsafe_allow_html=True)
+                                        # No Img用の画像を動的生成して表示
+                                        no_img = create_dummy_image("No Img")
+                                        st.image(no_img, use_container_width=True)
                                     
-                                    # 選択されている場合は色を変えるかチェックマーク
+                                    # 選択状態のボタン
                                     is_selected = (st.session_state[filter_state_key] == item)
                                     btn_label = "✅" if is_selected else item[:3]
                                     
@@ -562,10 +564,11 @@ try:
                                             st.session_state[filter_state_key] = item
                                         st.rerun()
 
-                    # 選択された鳥でさらにフィルタリング
                     if st.session_state[filter_state_key] != "すべて":
                         day_data = day_data[day_data['common_name'] == st.session_state[filter_state_key]]
                         st.info(f"🔍 **{st.session_state[filter_state_key]}** に絞り込み中")
+                        
+                        
                 
                 if day_data.empty:
                     st.warning("指定した条件に一致する録音データは見つからなかったぜ。")
