@@ -11,7 +11,9 @@ from pydub import AudioSegment
 import uuid
 import math
 import streamlit.components.v1 as components
-from PIL import Image, ImageDraw, ImageFont # 🔥 これを追加
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np           # 🔥 これを追加
+import matplotlib.pyplot as plt # 🔥 これを追加
 
 # --- 1. 環境変数とSupabase接続 ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +29,7 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-# --- 2. リモート音声の取得と切り出し (MP3対応版に変更) ---
+# --- 2. リモート音声の取得と切り出し (MP3 + スペクトログラム対応版) ---
 @st.cache_data(show_spinner=False)
 def get_sliced_remote_audio(file_url, original_start, original_end):
     response = requests.get(file_url)
@@ -35,7 +37,7 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
         raise Exception("ファイルのダウンロードに失敗したぜ。")
         
     audio = AudioSegment.from_file(io.BytesIO(response.content))
-    channels = audio.channels # 🔥 GEʍlNEʍ Hack: 1ならモノラル、2ならステレオ
+    channels = audio.channels
     
     start_ms = max(0, int((original_start - 1.5) * 1000))
     end_ms = min(len(audio), int((original_end + 1.5) * 1000))
@@ -46,8 +48,27 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     sliced_audio.export(out_io, format="mp3", bitrate="192k")
     out_io.seek(0)
     
-    # 🔥 戻り値の最後に channels を追加
-    return out_io, start_ms / 1000.0, end_ms / 1000.0, channels
+    # 🔥 GEʍlNEʍ Hack: スペクトログラム画像の動的生成
+    samples = np.array(sliced_audio.get_array_of_samples())
+    # ステレオの場合はLチャンネルのみを解析に回す
+    if channels == 2:
+        samples = samples.reshape((-1, 2))
+        samples = samples[:, 0]
+        
+    # 余白ゼロの美しいグラフキャンバスを作成
+    fig, ax = plt.subplots(figsize=(5, 1.5))
+    ax.specgram(samples, Fs=audio.frame_rate, cmap='magma', NFFT=1024, noverlap=512)
+    ax.axis('off')
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    
+    # グラフを画像データとしてBytesIOに保存
+    img_io = io.BytesIO()
+    plt.savefig(img_io, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+    img_io.seek(0)
+    
+    # 戻り値の最後に spec_img を追加
+    return out_io, start_ms / 1000.0, end_ms / 1000.0, channels, img_io
 
 # --- 2.5. 日付情報の自動抽出と曜日の計算 ---
 def extract_date(filename):
@@ -511,7 +532,8 @@ try:
                             # 🔥 GEʍlNEʍ Hack: プレイヤーを描画する前に音声をロードして判定
                             try:
                                 with st.spinner("Loading Audio..."):
-                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    # 🔥 spec_img も一緒に受け取る
+                                    sliced_audio, actual_start, actual_end, channels, spec_img = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
                                 # バッジのCSSから余計なマージンを削除
                                 badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
                                 audio_loaded = True
@@ -531,7 +553,9 @@ try:
                                 st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
                             
                             # プレイヤー単体を描画（これで絶対に干渉しない）
+                            # 🔥 スペクトログラムとプレイヤーを美しく縦積み
                             if audio_loaded:
+                                st.image(spec_img, use_container_width=True)
                                 st.audio(sliced_audio, format="audio/mpeg")
                             else:
                                 st.error(f"ロードエラー: {error_msg}")
@@ -678,7 +702,8 @@ try:
                             # 🔥 プレイヤーを描画する前に音声をロード
                             try:
                                 with st.spinner("Loading Audio..."):
-                                    sliced_audio, actual_start, actual_end, channels = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
+                                    # 🔥 spec_img も一緒に受け取る
+                                    sliced_audio, actual_start, actual_end, channels, spec_img = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
                                 # 余計なマイナスマージンを完全削除
                                 badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
                                 audio_loaded = True
@@ -700,7 +725,9 @@ try:
                             # 🔥 ゲージとプレイヤーはカラムの「外」に出し、フル幅で贅沢に使う
                             st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
                             
+                            # 🔥 スペクトログラムとプレイヤーを美しく縦積み
                             if audio_loaded:
+                                st.image(spec_img, use_container_width=True)
                                 st.audio(sliced_audio, format="audio/mpeg")
                             else:
                                 st.error(f"ロードエラー: {error_msg}")
