@@ -1,3 +1,4 @@
+import base64
 import streamlit as st
 import pandas as pd
 import os
@@ -584,11 +585,50 @@ try:
                                 loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
                                 st.button(f"📍 {loc_name}", on_click=go_to_loc_detail, args=(loc_name,), key=f"link_loc_{index}")
                             
-                            # プレイヤー単体を描画（これで絶対に干渉しない）
-                            # 🔥 スペクトログラムとプレイヤーを美しく縦積み
+                            # 🔥 GEʍlNEʍ Hack: 音と波形が完全同期するカスタムHTMLプレイヤー
                             if audio_loaded:
-                                st.image(spec_img, use_container_width=True)
-                                st.audio(sliced_audio, format="audio/mpeg")
+                                audio_b64 = base64.b64encode(sliced_audio.getvalue()).decode()
+                                spec_b64 = base64.b64encode(spec_img.getvalue()).decode()
+                                
+                                custom_player_html = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                <style>
+                                    /* ダークモード対応と余白の完全排除 */
+                                    body {{ margin: 0; padding: 0; background-color: transparent; color-scheme: dark; overflow: hidden; }}
+                                </style>
+                                </head>
+                                <body>
+                                    <div style="display: flex; flex-direction: column; width: 100%;">
+                                        <!-- 波形画像と動くライン -->
+                                        <div style="position: relative; width: 100%; height: 120px; margin-bottom: 8px; border-radius: 6px; overflow: hidden;">
+                                            <img src="data:image/png;base64,{spec_b64}" style="width: 100%; height: 100%; object-fit: fill; display: block;" />
+                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #39FF14; box-shadow: 0 0 8px #39FF14; pointer-events: none;"></div>
+                                        </div>
+                                        <!-- オーディオプレイヤー -->
+                                        <audio id="player" controls src="data:audio/mpeg;base64,{audio_b64}" style="width: 100%; height: 40px; outline: none;"></audio>
+                                    </div>
+                                    <script>
+                                        const audio = document.getElementById('player');
+                                        const playhead = document.getElementById('playhead');
+                                        
+                                        // 再生位置に合わせてラインのCSS(left)をパーセンテージで動かす
+                                        const updatePlayhead = () => {{
+                                            if (audio.duration) {{
+                                                const percent = (audio.currentTime / audio.duration) * 100;
+                                                playhead.style.left = percent + '%';
+                                            }}
+                                        }};
+                                        
+                                        audio.addEventListener('timeupdate', updatePlayhead);
+                                        audio.addEventListener('seeked', updatePlayhead);
+                                    </script>
+                                </body>
+                                </html>
+                                """
+                                # カスタムUIをiframeとして画面にマウント (スクロールバーが出ない絶妙な高さを指定)
+                                components.html(custom_player_html, height=175)
                             else:
                                 st.error(f"ロードエラー: {error_msg}")
                         st.divider()
@@ -757,10 +797,50 @@ try:
                             # 🔥 ゲージとプレイヤーはカラムの「外」に出し、フル幅で贅沢に使う
                             st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
                             
-                            # 🔥 スペクトログラムとプレイヤーを美しく縦積み
+                            # 🔥 GEʍlNEʍ Hack: 音と波形が完全同期するカスタムHTMLプレイヤー
                             if audio_loaded:
-                                st.image(spec_img, use_container_width=True)
-                                st.audio(sliced_audio, format="audio/mpeg")
+                                audio_b64 = base64.b64encode(sliced_audio.getvalue()).decode()
+                                spec_b64 = base64.b64encode(spec_img.getvalue()).decode()
+                                
+                                custom_player_html = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                <style>
+                                    /* ダークモード対応と余白の完全排除 */
+                                    body {{ margin: 0; padding: 0; background-color: transparent; color-scheme: dark; overflow: hidden; }}
+                                </style>
+                                </head>
+                                <body>
+                                    <div style="display: flex; flex-direction: column; width: 100%;">
+                                        <!-- 波形画像と動くライン -->
+                                        <div style="position: relative; width: 100%; height: 120px; margin-bottom: 8px; border-radius: 6px; overflow: hidden;">
+                                            <img src="data:image/png;base64,{spec_b64}" style="width: 100%; height: 100%; object-fit: fill; display: block;" />
+                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #39FF14; box-shadow: 0 0 8px #39FF14; pointer-events: none;"></div>
+                                        </div>
+                                        <!-- オーディオプレイヤー -->
+                                        <audio id="player" controls src="data:audio/mpeg;base64,{audio_b64}" style="width: 100%; height: 40px; outline: none;"></audio>
+                                    </div>
+                                    <script>
+                                        const audio = document.getElementById('player');
+                                        const playhead = document.getElementById('playhead');
+                                        
+                                        // 再生位置に合わせてラインのCSS(left)をパーセンテージで動かす
+                                        const updatePlayhead = () => {{
+                                            if (audio.duration) {{
+                                                const percent = (audio.currentTime / audio.duration) * 100;
+                                                playhead.style.left = percent + '%';
+                                            }}
+                                        }};
+                                        
+                                        audio.addEventListener('timeupdate', updatePlayhead);
+                                        audio.addEventListener('seeked', updatePlayhead);
+                                    </script>
+                                </body>
+                                </html>
+                                """
+                                # カスタムUIをiframeとして画面にマウント (スクロールバーが出ない絶妙な高さを指定)
+                                components.html(custom_player_html, height=175)
                             else:
                                 st.error(f"ロードエラー: {error_msg}")
                                 
