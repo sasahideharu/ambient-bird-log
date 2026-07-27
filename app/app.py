@@ -60,6 +60,15 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     fig, ax = plt.subplots(figsize=(5, 1.5))
     ax.specgram(samples, Fs=audio.frame_rate, cmap='magma', NFFT=1024, noverlap=512)
     ax.set_ylim(0, 12000)
+    
+    # 🔥 GEʍlNEʍ Hack: 右隅に2kHz刻みの目盛りとテキストを直接描画(オーバーレイ)
+    for freq in range(2000, 12000, 2000):
+        # transform=ax.get_yaxis_transform() により、X軸は0.0〜1.0(画面の割合)、Y軸は実データ(Hz)で座標指定できる
+        # 1. 右端(0.98〜1.0)に短い目盛り線を引く
+        ax.plot([0.98, 1.0], [freq, freq], color='white', alpha=0.6, linewidth=0.8, transform=ax.get_yaxis_transform())
+        # 2. その少し左(0.97)に、すごく小さな文字で周波数を印字する
+        ax.text(0.97, freq, f'{freq//1000}kHz', color='white', alpha=0.7, fontsize=5, ha='right', va='center', transform=ax.get_yaxis_transform())    
+    
     ax.axis('off')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
     
