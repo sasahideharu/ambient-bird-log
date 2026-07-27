@@ -59,6 +59,7 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     # 余白ゼロの美しいグラフキャンバスを作成
     fig, ax = plt.subplots(figsize=(5, 1.5))
     ax.specgram(samples, Fs=audio.frame_rate, cmap='magma', NFFT=1024, noverlap=512)
+    ax.set_ylim(0, 12000)
     ax.axis('off')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
     
