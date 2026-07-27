@@ -82,6 +82,34 @@ def extract_date(filename):
         except ValueError:
             return "不明な日付"
     return "不明な日付"
+
+# 🔥 GEʍlNEʍ Hack: 連続する3秒の解析結果を1つの長いトラックに結合する
+def merge_consecutive_detections(df, max_gap=3.0):
+    # 必要なカラムでソート（ファイル > 鳥の種類 > 開始時間）
+    df = df.sort_values(['wav_filename', 'common_name', 'start_sec'])
+    
+    # 直前のデータとの「終了時間」と「開始時間」の差（ギャップ）を計算
+    df['prev_end'] = df.groupby(['wav_filename', 'common_name'])['end_sec'].shift(1)
+    df['gap'] = df['start_sec'] - df['prev_end']
+    
+    # ギャップが指定秒数(3秒)より大きい、または最初のデータの場合は「新しい鳴き声グループ(True)」とする
+    df['new_group'] = (df['gap'].isnull()) | (df['gap'] > max_gap)
+    
+    # 累積和を使って、連続している行に同じグループIDを割り振る
+    df['group_id'] = df.groupby(['wav_filename', 'common_name'])['new_group'].cumsum()
+    
+    # グループごとにデータを集計（結合）
+    merged_df = df.groupby(['wav_filename', 'common_name', 'group_id']).agg({
+        'start_sec': 'min',     # 開始時間は一番早いものを採用
+        'end_sec': 'max',       # 終了時間は一番遅いものを採用
+        'confidence': 'max',    # 信頼度はその中で一番高かったものを採用
+        'location_name': 'first',
+        'latitude': 'first',
+        'longitude': 'first',
+        'record_date': 'first'
+    }).reset_index()
+    
+    return merged_df
     
 # 🔥 GEʍlNEʍ Hack: ファイル名から録音開始時間を抽出 (例: _1322.mp3 -> 13:22)
 def extract_recording_time(filename):
@@ -177,8 +205,11 @@ try:
     bird_images = {row['common_name']: row['image_url'] for row in response_master.data} if response_master.data else {}
     
     if response_all.data:
-        df_all = pd.DataFrame(response_all.data)
-        df_all['record_date'] = df_all['wav_filename'].apply(extract_date)
+        raw_df = pd.DataFrame(response_all.data)
+        raw_df['record_date'] = raw_df['wav_filename'].apply(extract_date)
+        
+        # 🔥 GEʍlNEʍ Hack: ここで細切れの3秒データを結合！
+        df_all = merge_consecutive_detections(raw_df, max_gap=3.0)
         
         if st.session_state.page == 'main':
             bird_names = sorted(df_all['common_name'].dropna().unique().tolist())
