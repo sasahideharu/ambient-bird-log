@@ -252,8 +252,17 @@ try:
                 bird_counts = df_filtered['common_name'].value_counts()
                 filtered_birds = {name: count for name, count in bird_counts.items() if not search_query or search_query in name}
                 
+                # 🔥 GEʍlNEʍ Hack: 鳥一覧のページネーション（表示件数制限でUI描画を爆速化）
+                bird_count_key = "display_count_main_bird"
+                if bird_count_key not in st.session_state:
+                    st.session_state[bird_count_key] = 21  # 初期は21件(3列x7行)を上限とする
+                
+                # 辞書をリスト化して、上限数だけスライス
+                filtered_birds_list = list(filtered_birds.items())
+                birds_to_show = filtered_birds_list[:st.session_state[bird_count_key]]
+                
                 cols = st.columns(3)
-                for i, (bird_name, count) in enumerate(filtered_birds.items()):
+                for i, (bird_name, count) in enumerate(birds_to_show):
                     col_idx = i % 3
                     with cols[col_idx]:
                         with st.container():
@@ -266,6 +275,12 @@ try:
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
                         st.markdown("<div style='min-height: 20px;'></div>", unsafe_allow_html=True)
+                
+                # 🔥 さらに読み込むボタン
+                if st.session_state[bird_count_key] < len(filtered_birds_list):
+                    if st.button("🔽 さらに21件読み込む", use_container_width=True, key="btn_load_more_main_bird"):
+                        st.session_state[bird_count_key] += 21
+                        st.rerun()
 
             with tab_location:
                 st.markdown("### 🗺️ 場所から探す")
