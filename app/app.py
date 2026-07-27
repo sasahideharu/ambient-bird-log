@@ -185,12 +185,12 @@ def go_to_main_loc():
 # --- 3. メインUI ---
 st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
-# 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版)
+# 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版 + フォントの折り返し禁止)
 st.markdown("""
     <style>
     /* --- 🔥 NEW: ネイティブヘッダーを避けつつ余白を削る黄金比 --- */
     .block-container {
-        padding-top: 3.5rem !important; /* 1.5remから3.5remへ調整 */
+        padding-top: 3.5rem !important; 
         padding-bottom: 1rem !important;
     }
     
@@ -203,12 +203,20 @@ st.markdown("""
         width: 100% !important; 
         margin-bottom: 4px !important;
     }
+    
+    /* 🔥 GEʍlNEʍ Hack: ボタンの文字を強制的に1行にする */
+    button p { 
+        font-size: 12px !important; 
+        white-space: nowrap !important;      /* 折り返し禁止 */
+        overflow: hidden !important;         /* はみ出しを隠す */
+        text-overflow: ellipsis !important;  /* 限界を超えたら...にする */
+    }
+    
     @media (max-width: 640px) {
         div[data-testid="stHorizontalBlock"] { flex-direction: row !important; flex-wrap: nowrap !important; }
         div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { min-width: 0 !important; padding: 0 3px !important; }
-        button p { font-size: 10px !important; }
+        button p { font-size: 10px !important; } /* スマホは10pxで固定。十分に読めるぜ */
     }
-    button p { font-size: 12px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -273,10 +281,24 @@ try:
                     with cols[col_idx]:
                         with st.container():
                             img_url = bird_images.get(bird_name)
+                            
+                            # 🔥 GEʍlNEʍ Hack: st.imageの代わりに <a> タグを使って画像自体をリンク化する
                             if img_url:
-                                st.image(img_url, use_container_width=True)
+                                st.markdown(f"""
+                                    <a href="?page=bird_detail&bird={bird_name}" target="_self" style="display: block; margin-bottom: 4px;">
+                                        <img src="{img_url}" style="width: 100%; border-radius: 6px; aspect-ratio: 1/1; object-fit: cover;">
+                                    </a>
+                                """, unsafe_allow_html=True)
                             else:
-                                st.markdown("<div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center; margin-bottom: 4px;'><span style='color:#8E8E93; font-size:10px;'>No Img</span></div>", unsafe_allow_html=True)
+                                st.markdown(f"""
+                                    <a href="?page=bird_detail&bird={bird_name}" target="_self" style="display: block; margin-bottom: 4px; text-decoration: none;">
+                                        <div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center;'>
+                                            <span style='color:#8E8E93; font-size:10px;'>No Img</span>
+                                        </div>
+                                    </a>
+                                """, unsafe_allow_html=True)
+                                
+                            # 既存のボタン（文字をタップした時の導線もキープ）
                             if st.button(f"{bird_name}", key=f"btn_bird_{bird_name}", use_container_width=True):
                                 go_to_bird_detail(bird_name)
                                 st.rerun()
