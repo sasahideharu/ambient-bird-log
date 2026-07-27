@@ -292,37 +292,6 @@ try:
                 st.markdown("### 🗺️ 場所から探す")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 if not df_loc.empty:
-                    df_map = df_loc[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude']).copy()
-                    
-                    # 1. 緯度経度の最大・最小値を計算
-                    lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
-                    lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
-                    
-                    # 2. 🔥 描画範囲を広げるための余白を大幅に強化（80%増し、最低0.05度 = 約5km強）
-                    lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
-                    lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
-                    
-                    # 3. 実際のデータ
-                    df_map['dot_color'] = '#39FF14'
-                    df_map['dot_size'] = 150
-                    
-                    # 4. 🔥 GEʍlNEʍ Hack: エンジンに確実に認識させる極小・極薄のアンカーポイント
-                    dummy_data = pd.DataFrame({
-                        'latitude': [lat_min - lat_pad, lat_max + lat_pad],
-                        'longitude': [lon_min - lon_pad, lon_max + lon_pad],
-                        'location_name': ['dummy', 'dummy'],
-                        'dot_color': ['#39FF1405', '#39FF1405'], # 実データと同じ緑ベースの極薄(アルファ値05)
-                        'dot_size': [1, 1] # 無視されない極小サイズ(1)
-                    })
-                    
-                    # 5. 実データとダミーデータを結合
-                    df_map_padded = pd.concat([df_map, dummy_data], ignore_index=True)
-                    
-                    # 6. カラーとサイズを列指定に変更してマップを描画
-                    st.map(df_map_padded, latitude='latitude', longitude='longitude', color='dot_color', size='dot_size', height=250)
-                    
-                    st.divider()
-                    st.markdown("**📍 過去の記録（場所別）**")
                     
                     # 1. 選択肢の先頭に「すべての場所」をデフォルトとして追加
                     unique_locations = ["すべての場所"] + sorted(df_loc['location_name'].unique().tolist())
@@ -336,7 +305,7 @@ try:
                     if loc_state_key not in st.session_state:
                         st.session_state[loc_state_key] = "すべての場所"
 
-                    # ドロップダウンリストの描画
+                    # ドロップダウンリストを先に描画
                     selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, index=unique_locations.index(st.session_state[loc_state_key]), label_visibility="collapsed")
                     
                     # 場所が切り替わったら表示件数を10件にリセットして再描画
@@ -350,9 +319,37 @@ try:
                         loc_filtered = df_loc
                     else:
                         loc_filtered = df_loc[df_loc['location_name'] == selected_loc]
+
+                    # 🔥 GEʍlNEʍ Hack: フィルタリングされたデータ(loc_filtered)だけを使ってマップを描画
+                    if not loc_filtered.empty:
+                        df_map = loc_filtered[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude']).copy()
+                        
+                        lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
+                        lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
+                        
+                        # 余白を計算 (1ピンだけでもダミーポイントのおかげで5kmスケールが保たれる)
+                        lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
+                        lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
+                        
+                        df_map['dot_color'] = '#39FF14'
+                        df_map['dot_size'] = 150
+                        
+                        dummy_data = pd.DataFrame({
+                            'latitude': [lat_min - lat_pad, lat_max + lat_pad],
+                            'longitude': [lon_min - lon_pad, lon_max + lon_pad],
+                            'location_name': ['dummy', 'dummy'],
+                            'dot_color': ['#39FF1405', '#39FF1405'],
+                            'dot_size': [1, 1]
+                        })
+                        
+                        df_map_padded = pd.concat([df_map, dummy_data], ignore_index=True)
+                        st.map(df_map_padded, latitude='latitude', longitude='longitude', color='dot_color', size='dot_size', height=250)
+                    
+                    st.divider()
+                    st.markdown("**📍 過去の記録（場所別）**")
                         
                     if not loc_filtered.empty:
-                        # 4. 🔥 GEʍlNEʍ Hack: 日付と場所でグループ化し、件数を集計して降順にソート
+                        # 4. 日付と場所でグループ化し、件数を集計して降順にソート
                         summary_df = loc_filtered.groupby(['record_date', 'location_name']).size().reset_index(name='count')
                         summary_df = summary_df.sort_values(by=['record_date', 'location_name'], ascending=[False, True])
                         
@@ -369,7 +366,6 @@ try:
                                 col1, col2 = st.columns([3, 1])
                                 with col1:
                                     st.markdown(f"### 📅 {date_str}")
-                                    # 🔥 ここで「どの場所での記録か」を明記する
                                     st.caption(f"📍 **{loc_name}** ｜ 🎧 検出: {count} 件")
                                 with col2:
                                     st.button("詳細", on_click=go_to_date_detail, args=(date_str,), key=f"btn_loc_tab_{loc_name}_{date_str}_{index}")
@@ -880,6 +876,7 @@ try:
                             st.session_state[count_key] += 10
                             st.rerun()
 
+        # --- 📍 場所の詳細画面 ---
         elif st.session_state.page == 'loc_detail':
             # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
@@ -893,7 +890,33 @@ try:
             
             st.markdown(f"## 📍 {target_loc} の記録")
             loc_data = df_all[df_all['location_name'] == target_loc].sort_values(by='record_date', ascending=False)
+            
             if not loc_data.empty:
+                # 🔥 GEʍlNEʍ Hack: 場所の詳細画面にもピン付きのマップをドロップ
+                df_map = loc_data[['latitude', 'longitude', 'location_name']].drop_duplicates(subset=['latitude', 'longitude']).copy()
+                if not df_map.empty:
+                    lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
+                    lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
+                    
+                    lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
+                    lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
+                    
+                    df_map['dot_color'] = '#39FF14'
+                    df_map['dot_size'] = 150
+                    
+                    dummy_data = pd.DataFrame({
+                        'latitude': [lat_min - lat_pad, lat_max + lat_pad],
+                        'longitude': [lon_min - lon_pad, lon_max + lon_pad],
+                        'location_name': ['dummy', 'dummy'],
+                        'dot_color': ['#39FF1405', '#39FF1405'],
+                        'dot_size': [1, 1]
+                    })
+                    
+                    df_map_padded = pd.concat([df_map, dummy_data], ignore_index=True)
+                    st.map(df_map_padded, latitude='latitude', longitude='longitude', color='dot_color', size='dot_size', height=200)
+                    
+                    st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
+
                 dates_at_loc = loc_data['record_date'].unique()
                 for date_str in dates_at_loc:
                     count = len(loc_data[loc_data['record_date'] == date_str])
