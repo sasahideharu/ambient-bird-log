@@ -59,7 +59,13 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     fig = Figure(figsize=(5, 1.5))
     ax = fig.add_subplot(111)
     
-    ax.specgram(samples, Fs=audio.frame_rate, cmap='magma', NFFT=1024, noverlap=512)
+    # 🔥 GEʍlNEʍ Hack: カラーマップを深淵な 'inferno' に変更し、オブジェクトを受け取る
+    Pxx, freqs, bins, im = ax.specgram(samples, Fs=audio.frame_rate, cmap='inferno', NFFT=1024, noverlap=512)
+    
+    # 🔥 鳴き声の最大音量(ピーク)を基準に、そこから下50dBだけを描画（ノイズフロアを黒に沈めるダイナミクス処理）
+    max_db = 10 * np.log10(Pxx.max())
+    im.set_clim(vmin=max_db - 50, vmax=max_db + 5)
+    
     ax.set_ylim(0, 12000)
     
     for freq in range(2000, 12000, 2000):
