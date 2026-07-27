@@ -687,6 +687,30 @@ try:
                 loc_text = "、".join(visited_locations) if len(visited_locations) > 0 else "場所不明"
                 st.info(f"📍 **その日に行った場所:** {loc_text}")
                 
+                # --- 🔥 GEʍlNEʍ Hack: その日の足跡をマップに可視化 ---
+                df_map = day_data[['latitude', 'longitude', 'location_name']].dropna().drop_duplicates(subset=['latitude', 'longitude']).copy()
+                if not df_map.empty:
+                    lat_min, lat_max = df_map['latitude'].min(), df_map['latitude'].max()
+                    lon_min, lon_max = df_map['longitude'].min(), df_map['longitude'].max()
+                    
+                    # 1箇所だけでも美しくズームアウトさせるダミーポイントの計算
+                    lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
+                    lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
+                    
+                    df_map['dot_color'] = '#39FF14'
+                    df_map['dot_size'] = 150
+                    
+                    dummy_data = pd.DataFrame({
+                        'latitude': [lat_min - lat_pad, lat_max + lat_pad],
+                        'longitude': [lon_min - lon_pad, lon_max + lon_pad],
+                        'location_name': ['dummy', 'dummy'],
+                        'dot_color': ['#39FF1405', '#39FF1405'],
+                        'dot_size': [1, 1]
+                    })
+                    
+                    df_map_padded = pd.concat([df_map, dummy_data], ignore_index=True)
+                    st.map(df_map_padded, latitude='latitude', longitude='longitude', color='dot_color', size='dot_size', height=200)
+                
                 st.markdown("<div style='min-height: 10px;'></div>", unsafe_allow_html=True)
                 
                 # --- 🔥 NEW: 信頼性ゲージ ---
