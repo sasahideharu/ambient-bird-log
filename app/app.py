@@ -30,7 +30,9 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-# --- 2. リモート音声の取得と切り出し (MP3 + スペクトログラム対応版) ---
+from matplotlib.figure import Figure # 🔥 これがスレッドセーフの鍵
+
+# --- 2. リモート音声の取得と切り出し (完全スレッドセーフ＆バイナリ版) ---
 @st.cache_data(show_spinner=False)
 def get_sliced_remote_audio(file_url, original_start, original_end):
     response = requests.get(file_url)
@@ -47,40 +49,33 @@ def get_sliced_remote_audio(file_url, original_start, original_end):
     
     out_io = io.BytesIO()
     sliced_audio.export(out_io, format="mp3", bitrate="192k")
-    out_io.seek(0)
     
-    # 🔥 GEʍlNEʍ Hack: スペクトログラム画像の動的生成
     samples = np.array(sliced_audio.get_array_of_samples())
-    # ステレオの場合はLチャンネルのみを解析に回す
     if channels == 2:
         samples = samples.reshape((-1, 2))
         samples = samples[:, 0]
         
-    # 余白ゼロの美しいグラフキャンバスを作成
-    fig, ax = plt.subplots(figsize=(5, 1.5))
+    # 🔥 GEʍlNEʍ Hack: pyplotを使わず、独立したFigureオブジェクトを生成（競合回避）
+    fig = Figure(figsize=(5, 1.5))
+    ax = fig.add_subplot(111)
+    
     ax.specgram(samples, Fs=audio.frame_rate, cmap='magma', NFFT=1024, noverlap=512)
     ax.set_ylim(0, 12000)
     
-    # 🔥 GEʍlNEʍ Hack: 右隅に2kHz刻みの目盛りとテキストを直接描画(オーバーレイ)
     for freq in range(2000, 12000, 2000):
-        # transform=ax.get_yaxis_transform() により、X軸は0.0〜1.0(画面の割合)、Y軸は実データ(Hz)で座標指定できる
-        # 1. 右端(0.98〜1.0)に短い目盛り線を引く
         ax.plot([0.98, 1.0], [freq, freq], color='white', alpha=0.6, linewidth=0.8, transform=ax.get_yaxis_transform())
-        # 2. その少し左(0.97)に、すごく小さな文字で周波数を印字する
-        ax.text(0.97, freq, f'{freq//1000}kHz', color='white', alpha=0.7, fontsize=5, ha='right', va='center', transform=ax.get_yaxis_transform())    
+        ax.text(0.97, freq, f'{freq//1000}kHz', color='white', alpha=0.7, fontsize=5, ha='right', va='center', transform=ax.get_yaxis_transform())
     
     ax.axis('off')
-    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
     
-    # グラフを画像データとしてBytesIOに保存
     img_io = io.BytesIO()
-    plt.savefig(img_io, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
-    plt.close(fig)
-    img_io.seek(0)
+    fig.savefig(img_io, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
     
-    # 戻り値の最後に spec_img を追加
-    return out_io, start_ms / 1000.0, end_ms / 1000.0, channels, img_io
-
+    # 🔥 GEʍlNEʍ Hack: BytesIOオブジェクトではなく、.getvalue()で純粋なバイナリ(bytes)を取り出して返す
+    return out_io.getvalue(), start_ms / 1000.0, end_ms / 1000.0, channels, img_io.getvalue()
+    
+    
 # --- 2.5. 日付情報の自動抽出と曜日の計算 ---
 def extract_date(filename):
     match = re.match(r'^(\d{6})', filename)
@@ -597,8 +592,9 @@ try:
                             
                             # 🔥 GEʍlNEʍ Hack: 音と波形が完全同期するカスタムHTMLプレイヤー
                             if audio_loaded:
-                                audio_b64 = base64.b64encode(sliced_audio.getvalue()).decode()
-                                spec_b64 = base64.b64encode(spec_img.getvalue()).decode()
+                                # 🔥 すでにバイナリデータなので、そのままエンコードする
+                                audio_b64 = base64.b64encode(sliced_audio).decode()
+                                spec_b64 = base64.b64encode(spec_img).decode()
                                 
                                 custom_player_html = f"""
                                 <!DOCTYPE html>
@@ -809,8 +805,9 @@ try:
                             
                             # 🔥 GEʍlNEʍ Hack: 音と波形が完全同期するカスタムHTMLプレイヤー
                             if audio_loaded:
-                                audio_b64 = base64.b64encode(sliced_audio.getvalue()).decode()
-                                spec_b64 = base64.b64encode(spec_img.getvalue()).decode()
+                                # 🔥 すでにバイナリデータなので、そのままエンコードする
+                                audio_b64 = base64.b64encode(sliced_audio).decode()
+                                spec_b64 = base64.b64encode(spec_img).decode()
                                 
                                 custom_player_html = f"""
                                 <!DOCTYPE html>
