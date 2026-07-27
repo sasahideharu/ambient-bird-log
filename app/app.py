@@ -308,6 +308,9 @@ try:
                     # ドロップダウンリストを先に描画
                     selected_loc = st.selectbox("場所を選択してくれ:", unique_locations, index=unique_locations.index(st.session_state[loc_state_key]), label_visibility="collapsed")
                     
+                    # 🔥 GEʍlNEʍ Hack: セレクトボックスとマップの間に不可視のクッション（15px）を挟む
+                    st.markdown("<div style='min-height: 15px;'></div>", unsafe_allow_html=True)
+                    
                     # 場所が切り替わったら表示件数を10件にリセットして再描画
                     if selected_loc != st.session_state[loc_state_key]:
                         st.session_state[loc_state_key] = selected_loc
