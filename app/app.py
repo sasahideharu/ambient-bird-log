@@ -100,9 +100,10 @@ def merge_consecutive_detections(df, max_gap=3.0):
     
     # グループごとにデータを集計（結合）
     merged_df = df.groupby(['wav_filename', 'common_name', 'group_id']).agg({
-        'start_sec': 'min',     # 開始時間は一番早いものを採用
-        'end_sec': 'max',       # 終了時間は一番遅いものを採用
-        'confidence': 'max',    # 信頼度はその中で一番高かったものを採用
+        'start_sec': 'min',         # 開始時間は一番早いものを採用
+        'end_sec': 'max',           # 終了時間は一番遅いものを採用
+        'confidence': 'max',        # 信頼度はその中で一番高かったものを採用
+        'scientific_name': 'first', # 🔥 ここを追加！学名のロストを防ぐ
         'location_name': 'first',
         'latitude': 'first',
         'longitude': 'first',
