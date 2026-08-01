@@ -252,56 +252,14 @@ st.markdown("""
         color: #6F8F5E !important;
         border-bottom-color: #6F8F5E !important;
     }
-
-    /* 🔥 新デザイン: タブをピル型のボタン風に（data-baseweb版） */
-    div[data-baseweb="tab-list"] {
-        background: #FFFFFF;
-        border-radius: 18px;
-        padding: 6px;
-        gap: 4px;
-        box-shadow: 0 4px 10px rgba(58,58,58,0.08);
-    }
-    div[data-baseweb="tab-highlight"] { display: none; }
-    div[data-baseweb="tab-border"] { display: none; }
-    div[data-baseweb="tab-list"] button[data-baseweb="tab"] {
-        border-radius: 14px !important;
-        font-weight: 700 !important;
-        color: #8A8A78 !important;
-    }
-    div[data-baseweb="tab-list"] button[aria-selected="true"] {
-        background: #C9BA8F !important;
-        color: #4A4530 !important;
-    }
-
-    /* 🔥 新デザイン: タブをピル型のボタン風に（role属性ベース・こちらが本命） */
-    div[data-testid="stTabs"] [role="tablist"] {
-        background: #FFFFFF !important;
-        border-radius: 18px !important;
-        padding: 6px !important;
-        gap: 4px !important;
-        box-shadow: 0 4px 10px rgba(58,58,58,0.08);
-        border-bottom: none !important;
+    div[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+        color: #6F8F5E !important;
+        border-bottom-color: #6F8F5E !important;
+        font-weight: 900 !important;
     }
     div[data-testid="stTabs"] [role="tab"] {
-        border-radius: 14px !important;
         font-weight: 700 !important;
         color: #8A8A78 !important;
-        border: none !important;
-    }
-    div[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-        background: #C9BA8F !important;
-        color: #4A4530 !important;
-    }
-    div[data-testid="stTabs"] [role="tab"] p {
-        color: inherit !important;
-    }
-    /* 🔥 タブボタン以外の装飾要素（下線・インジケーター）をすべて非表示にする */
-    div[data-testid="stTabs"] [role="tablist"] > *:not([role="tab"]) {
-        display: none !important;
-    }
-    div[data-testid="stTabs"] [role="tab"]::after,
-    div[data-testid="stTabs"] [role="tab"]::before {
-        display: none !important;
     }
 
     /* 🔥 新デザイン: 信頼度スライダーと検索ボックスをカード風に */
