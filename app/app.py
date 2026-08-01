@@ -191,11 +191,23 @@ def go_to_main_loc():
     st.query_params.clear()
 
 # --- 3. メインUI ---
-st.markdown("<h2 style='font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='font-family: \"Yusei Magic\", sans-serif; font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center; color: #3A3A3A;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
 
 # 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版 + フォントの折り返し禁止)
 st.markdown("""
     <style>
+    /* 🔥 新デザイン: Googleフォントの読み込み */
+    @import url('https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap');
+
+    /* 🔥 新デザイン: アプリ全体のフォントと配色を淡いウグイス色系に統一 */
+    .stApp {
+        background-color: #F4F2EC;
+        font-family: 'Zen Maru Gothic', sans-serif;
+    }
+    .stApp, .stApp p, .stApp span, .stApp label {
+        color: #3A3A3A;
+    }
+
     /* --- 🔥 NEW: ネイティブヘッダーを避けつつ余白を削る黄金比 --- */
     .block-container {
         padding-top: 3.5rem !important; 
@@ -218,6 +230,20 @@ st.markdown("""
         white-space: nowrap !important;      /* 折り返し禁止 */
         overflow: hidden !important;         /* はみ出しを隠す */
         text-overflow: ellipsis !important;  /* 限界を超えたら...にする */
+    }
+
+    /* 🔥 新デザイン: カード・ボタンの角丸とアクセントカラー */
+    .stButton button, .stTextInput input, .stSelectbox div[data-baseweb="select"] {
+        border-radius: 12px !important;
+        border-color: #E5E0D2 !important;
+    }
+    div[data-testid="stSlider"] div[role="slider"] {
+        background-color: #B4CF9E !important;
+        border-color: #B4CF9E !important;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: #6F8F5E !important;
+        border-bottom-color: #6F8F5E !important;
     }
     
     @media (max-width: 640px) {
@@ -300,8 +326,8 @@ try:
                             else:
                                 st.markdown(f"""
                                     <a href="?page=bird_detail&bird={bird_name}" target="_self" style="display: block; margin-bottom: 4px; text-decoration: none;">
-                                        <div style='background-color:#1E1E1E; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center;'>
-                                            <span style='color:#8E8E93; font-size:10px;'>No Img</span>
+                                        <div style='background-color:#E5E0D2; border-radius:6px; width: 100%; aspect-ratio: 1/1; display:flex; align-items:center; justify-content:center;'>
+                                            <span style='color:#9A9A8A; font-size:10px;'>No Img</span>
                                         </div>
                                     </a>
                                 """, unsafe_allow_html=True)
@@ -364,14 +390,14 @@ try:
                         lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
                         lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
                         
-                        df_map['dot_color'] = '#39FF14'
+                        df_map['dot_color'] = '#6F8F5E'
                         df_map['dot_size'] = 150
                         
                         dummy_data = pd.DataFrame({
                             'latitude': [lat_min - lat_pad, lat_max + lat_pad],
                             'longitude': [lon_min - lon_pad, lon_max + lon_pad],
                             'location_name': ['dummy', 'dummy'],
-                            'dot_color': ['#39FF1405', '#39FF1405'],
+                            'dot_color': ['#6F8F5E05', '#6F8F5E05'],
                             'dot_size': [1, 1]
                         })
                         
@@ -561,7 +587,7 @@ try:
                 st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
                 st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
-            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_bird = st.session_state.selected_bird
             
@@ -667,7 +693,7 @@ try:
                                     # 🔥 spec_img も一緒に受け取る
                                     sliced_audio, actual_start, actual_end, channels, spec_img = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
                                 # バッジのCSSから余計なマージンを削除
-                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
+                                badge = "<span style='color:#6F8F5E; border:1px solid #6F8F5E; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#9A9A8A; border:1px solid #9A9A8A; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
                                 audio_loaded = True
                             except Exception as e:
                                 badge = ""
@@ -706,7 +732,7 @@ try:
                                         <!-- 波形画像と動くライン -->
                                         <div style="position: relative; width: 100%; height: 120px; margin-bottom: 8px; border-radius: 6px; overflow: hidden;">
                                             <img src="data:image/png;base64,{spec_b64}" style="width: 100%; height: 100%; object-fit: fill; display: block;" />
-                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #39FF14; box-shadow: 0 0 8px #39FF14; pointer-events: none;"></div>
+                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #6F8F5E; box-shadow: 0 0 8px #6F8F5E; pointer-events: none;"></div>
                                         </div>
                                         <!-- オーディオプレイヤー -->
                                         <audio id="player" controls src="data:audio/mpeg;base64,{audio_b64}" style="width: 100%; height: 40px; outline: none;"></audio>
@@ -749,7 +775,7 @@ try:
                 st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
                 st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
-            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_date = st.session_state.selected_date
             
@@ -776,14 +802,14 @@ try:
                     lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
                     lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
                     
-                    df_map['dot_color'] = '#39FF14'
+                    df_map['dot_color'] = '#6F8F5E'
                     df_map['dot_size'] = 150
                     
                     dummy_data = pd.DataFrame({
                         'latitude': [lat_min - lat_pad, lat_max + lat_pad],
                         'longitude': [lon_min - lon_pad, lon_max + lon_pad],
                         'location_name': ['dummy', 'dummy'],
-                        'dot_color': ['#39FF1405', '#39FF1405'],
+                        'dot_color': ['#6F8F5E05', '#6F8F5E05'],
                         'dot_size': [1, 1]
                     })
                     
@@ -818,7 +844,7 @@ try:
                     st.markdown("<br>**🐦 鳥で絞り込む**", unsafe_allow_html=True)
 
                     # 🔥 GEʍlNEʍ Hack: 動的にダミー画像を生成する関数 (フォント巨大化＆完全中央揃え版)
-                    def create_dummy_image(text, bg_color="#1E1E1E", text_color="#8E8E93"):
+                    def create_dummy_image(text, bg_color="#E5E0D2", text_color="#9A9A8A"):
                         # 300x300の正方形画像を作成
                         img = Image.new('RGB', (300, 300), color=bg_color)
                         d = ImageDraw.Draw(img)
@@ -902,7 +928,7 @@ try:
                                     # 🔥 spec_img も一緒に受け取る
                                     sliced_audio, actual_start, actual_end, channels, spec_img = get_sliced_remote_audio(public_url, float(row['start_sec']), float(row['end_sec']))
                                 # 余計なマイナスマージンを完全削除
-                                badge = "<span style='color:#39FF14; border:1px solid #39FF14; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#8E8E93; border:1px solid #8E8E93; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
+                                badge = "<span style='color:#6F8F5E; border:1px solid #6F8F5E; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🎧 Stereo</span>" if channels >= 2 else "<span style='color:#9A9A8A; border:1px solid #9A9A8A; padding:2px 6px; border-radius:4px; font-size:10px; vertical-align:middle;'>🔈 Mono</span>"
                                 audio_loaded = True
                             except Exception as e:
                                 badge = ""
@@ -944,7 +970,7 @@ try:
                                         <!-- 波形画像と動くライン -->
                                         <div style="position: relative; width: 100%; height: 120px; margin-bottom: 8px; border-radius: 6px; overflow: hidden;">
                                             <img src="data:image/png;base64,{spec_b64}" style="width: 100%; height: 100%; object-fit: fill; display: block;" />
-                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #39FF14; box-shadow: 0 0 8px #39FF14; pointer-events: none;"></div>
+                                            <div id="playhead" style="position: absolute; top: 0; left: 0%; width: 2px; height: 100%; background-color: #6F8F5E; box-shadow: 0 0 8px #6F8F5E; pointer-events: none;"></div>
                                         </div>
                                         <!-- オーディオプレイヤー -->
                                         <audio id="player" controls src="data:audio/mpeg;base64,{audio_b64}" style="width: 100%; height: 40px; outline: none;"></audio>
@@ -988,7 +1014,7 @@ try:
                 st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
                 st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
-            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #444;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_loc = st.session_state.selected_loc
             
@@ -1005,14 +1031,14 @@ try:
                     lat_pad = max((lat_max - lat_min) * 0.8, 0.05)
                     lon_pad = max((lon_max - lon_min) * 0.8, 0.05)
                     
-                    df_map['dot_color'] = '#39FF14'
+                    df_map['dot_color'] = '#6F8F5E'
                     df_map['dot_size'] = 150
                     
                     dummy_data = pd.DataFrame({
                         'latitude': [lat_min - lat_pad, lat_max + lat_pad],
                         'longitude': [lon_min - lon_pad, lon_max + lon_pad],
                         'location_name': ['dummy', 'dummy'],
-                        'dot_color': ['#39FF1405', '#39FF1405'],
+                        'dot_color': ['#6F8F5E05', '#6F8F5E05'],
                         'dot_size': [1, 1]
                     })
                     
