@@ -131,6 +131,14 @@ def extract_recording_time(filename):
         return f"{match.group(1)}:{match.group(2)}"
     return None
 
+# 🔥 ファイル名の_hhmmから「収録時刻 hh時mm分」表示用テキストを作る
+def format_recording_time_label(filename):
+    rec_time = extract_recording_time(filename)
+    if rec_time:
+        hh, mm = rec_time.split(":")
+        return f"🕒 収録時刻 {hh}時{mm}分"
+    return ""
+
 # --- 2.8. 画面遷移のコントロール（Session State & Query Params） ---
 # アプリを開いた瞬間に、URLにパラメータがあれば読み込む
 if 'page' not in st.session_state: 
@@ -649,9 +657,8 @@ try:
                             public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
                             duration = round(float(row['end_sec']) - float(row['start_sec']), 1)
                             confidence_pct = int(row['confidence'] * 100)
-                            # 🔥 日付画面でもファイル名から録音時間をパースして表示用に成形
-                            rec_time = extract_recording_time(wav_filename)
-                            time_str = f"🕒 {rec_time}" if rec_time else ""
+                            # 🔥 ファイル名から収録時刻をパースして表示用に成形
+                            time_str = format_recording_time_label(wav_filename)
 
                             
                             # 🔥 GEʍlNEʍ Hack: プレイヤーを描画する前に音声をロードして判定
@@ -672,6 +679,8 @@ try:
                                 # 🔥 信頼度の横にバッジを自然に配置
                                 st.markdown(f"**信頼度:** `{confidence_pct}%` &nbsp; {badge}", unsafe_allow_html=True)
                                 st.markdown(f"**再生時間:** `{duration}秒`")
+                                if time_str:
+                                    st.caption(time_str)
                             with col_meta2:
                                 st.button(f"📅 {row['record_date']}", on_click=go_to_date_detail, args=(row['record_date'],), key=f"link_date_{index}")
                                 loc_name = row['location_name'] if pd.notna(row['location_name']) else "場所不明"
@@ -884,9 +893,8 @@ try:
                         with st.container():
                             wav_filename = row['wav_filename']
                             public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(wav_filename)
-                            # 🔥 日付画面でもファイル名から録音時間をパースして表示用に成形
-                            rec_time = extract_recording_time(wav_filename)
-                            time_str = f"🕒 {rec_time}" if rec_time else ""
+                            # 🔥 ファイル名から収録時刻をパースして表示用に成形
+                            time_str = format_recording_time_label(wav_filename)
                             
                             # 🔥 プレイヤーを描画する前に音声をロード
                             try:
@@ -912,6 +920,8 @@ try:
                                 st.markdown(f"<div style='padding-top: 8px;'>{badge}</div>", unsafe_allow_html=True)
                             
                             # 🔥 ゲージとプレイヤーはカラムの「外」に出し、フル幅で贅沢に使う
+                            if time_str:
+                                st.caption(time_str)
                             st.progress(row['confidence'], text=f"信頼度: {confidence_pct}%")
                             
                             # 🔥 GEʍlNEʍ Hack: 音と波形が完全同期するカスタムHTMLプレイヤー
