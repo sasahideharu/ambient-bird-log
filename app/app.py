@@ -191,7 +191,12 @@ def go_to_main_loc():
     st.query_params.clear()
 
 # --- 3. メインUI ---
-st.markdown("<h2 style='font-family: \"Yusei Magic\", sans-serif; font-size: 26px; font-weight: bold; padding-top: 10px; text-align: center; color: #3A3A3A;'>🎧 Ambient Bird Log 🐦</h2>", unsafe_allow_html=True)
+st.markdown("""
+    <div style="background:#7C8C74; margin:-3.5rem -1rem 1rem; padding:34px 22px 26px; border-radius:0 0 24px 24px;">
+        <div style="font-size:10px; letter-spacing:2px; color:#EDEFE7; font-weight:700; opacity:0.85;">FIELD OBSERVATION RECORD</div>
+        <h2 style="font-family:'Yusei Magic', sans-serif; font-size:26px; margin:6px 0 2px; color:#FFFFFF;">🎧 Ambient Bird Log 🐦</h2>
+    </div>
+""", unsafe_allow_html=True)
 
 # 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版 + フォントの折り返し禁止)
 st.markdown("""
@@ -245,7 +250,41 @@ st.markdown("""
         color: #6F8F5E !important;
         border-bottom-color: #6F8F5E !important;
     }
-    
+
+    /* 🔥 新デザイン: タブをピル型のボタン風に */
+    div[data-baseweb="tab-list"] {
+        background: #FFFFFF;
+        border-radius: 18px;
+        padding: 6px;
+        gap: 4px;
+        box-shadow: 0 4px 10px rgba(58,58,58,0.08);
+    }
+    div[data-baseweb="tab-highlight"] { display: none; }
+    div[data-baseweb="tab-border"] { display: none; }
+    div[data-baseweb="tab-list"] button[data-baseweb="tab"] {
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+        color: #8A8A78 !important;
+    }
+    div[data-baseweb="tab-list"] button[aria-selected="true"] {
+        background: #C9BA8F !important;
+        color: #4A4530 !important;
+    }
+
+    /* 🔥 新デザイン: 信頼度スライダーと検索ボックスをカード風に */
+    div[data-testid="stSlider"] {
+        background: #FFFFFF;
+        border: 3px solid #E5E0D2;
+        border-radius: 16px;
+        padding: 14px 16px 6px;
+        margin-bottom: 14px;
+    }
+    div[data-testid="stTextInput"] input {
+        border-radius: 14px !important;
+        border: 3px solid #E5E0D2 !important;
+        background: #FFFFFF !important;
+    }
+
     @media (max-width: 640px) {
         div[data-testid="stHorizontalBlock"] { flex-direction: row !important; flex-wrap: nowrap !important; }
         div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { min-width: 0 !important; padding: 0 3px !important; }
