@@ -192,11 +192,13 @@ def go_to_main_loc():
 
 # --- 3. メインUI ---
 st.markdown("""
-    <div style="background:#7C8C74; margin:-3.5rem -1rem 1rem; padding:34px 22px 26px; border-radius:0 0 24px 24px;">
+    <div style="background:#7C8C74; margin:0 -1rem 1rem; padding:20px 22px 26px; border-radius:0 0 24px 24px;">
         <div style="font-size:10px; letter-spacing:2px; color:#EDEFE7; font-weight:700; opacity:0.85;">FIELD OBSERVATION RECORD</div>
         <h2 style="font-family:'Yusei Magic', sans-serif; font-size:26px; margin:6px 0 2px; color:#FFFFFF;">🎧 Ambient Bird Log 🐦</h2>
+        <div style="font-size:12px; color:#EDEFE7; font-weight:700;">身近な野鳥の観察記録</div>
     </div>
 """, unsafe_allow_html=True)
+
 
 # 🔥 GEʍlNEʍ's CSS Hack (トップ余白の最適化版 + フォントの折り返し禁止)
 st.markdown("""
@@ -341,9 +343,9 @@ try:
             is_admin = st.query_params.get("admin") == "true"
             
             if is_admin:
-                tab_bird, tab_location, tab_admin, tab_data = st.tabs(["🐦 鳥から探す", "📍 場所から探す", "⚙️ 画像管理", "📁 データ登録"])
+                tab_bird, tab_location, tab_admin, tab_data = st.tabs(["🐦 種目録", "📍 観測地点", "⚙️ 画像管理", "📁 データ登録"])
             else:
-                tab_bird, tab_location = st.tabs(["🐦 鳥から探す", "📍 場所から探す"])
+                tab_bird, tab_location = st.tabs(["🐦 種目録", "📍 観測地点"])
 
             # --- 🔥 GEʍlNEʍ Hack: JSで裏側からタブを強制クリック ---
             if 'active_main_tab' in st.session_state:
@@ -361,7 +363,7 @@ try:
                 st.session_state.pop('active_main_tab')
 
             with tab_bird:
-                min_confidence = st.slider("信頼度", min_value=0, max_value=100, value=60, format="%d%%")
+                min_confidence = st.slider("信頼度フィルタ", min_value=0, max_value=100, value=60, format="%d%%")
                 st.markdown("<div style='min-height: 40px;'></div>", unsafe_allow_html=True)
                 search_query = st.text_input("検索窓", label_visibility="collapsed", placeholder="和名で検索")
                 st.markdown("<div style='min-height: 20px;'></div>", unsafe_allow_html=True)
@@ -415,7 +417,7 @@ try:
                         st.rerun()
 
             with tab_location:
-                st.markdown("### 🗺️ 場所から探す")
+                st.markdown("### 🗺️ 観測地点")
                 df_loc = df_all.dropna(subset=['latitude', 'longitude'])
                 if not df_loc.empty:
                     
@@ -654,9 +656,9 @@ try:
             # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
+                st.button("🐦 種目録", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
+                st.button("📍 観測地点", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_bird = st.session_state.selected_bird
@@ -842,9 +844,9 @@ try:
             # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
+                st.button("🐦 種目録", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
+                st.button("📍 観測地点", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_date = st.session_state.selected_date
@@ -1081,9 +1083,9 @@ try:
             # 🔥 疑似タブナビゲーション（各画面共通）
             col_nav1, col_nav2 = st.columns(2)
             with col_nav1:
-                st.button("🐦 鳥から探す", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
+                st.button("🐦 種目録", on_click=go_to_main_bird, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_1")
             with col_nav2:
-                st.button("📍 場所から探す", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
+                st.button("📍 観測地点", on_click=go_to_main_loc, type="tertiary", use_container_width=True, key=f"nav_{st.session_state.page}_2")
             st.markdown("<hr style='margin-top: -10px; margin-bottom: 16px; border-color: #E5E0D2;'>", unsafe_allow_html=True)
             
             target_loc = st.session_state.selected_loc
