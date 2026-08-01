@@ -478,14 +478,33 @@ try:
 
                                     # 2. CSVデータをパースしてDBへ登録
                                     if uploaded_csvs:
+                                        # 🔥 GEʍlNEʍ Hack: Storageにある既存のファイル名一覧を取得
+                                        try:
+                                            storage_objects = supabase.storage.from_(BUCKET_NAME).list(limit=5000)
+                                            storage_files = [f['name'] for f in storage_objects] if storage_objects else []
+                                        except Exception:
+                                            storage_files = []
+                                            
+                                        # 同時にアップロードされたMP3と、Storage内の既存ファイルを合体させた「検索リスト」
+                                        available_mp3s = [f.name for f in (uploaded_mp3s or [])] + storage_files
+                                        
                                         all_data = []
                                         for uploaded_csv in uploaded_csvs:
                                             df_csv = pd.read_csv(uploaded_csv)
                                             df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
+                                            
                                             if 'File' in df_csv.columns:
-                                                # DBに登録するファイル名を強制的に.mp3に書き換え
-                                                df_csv['wav_filename'] = df_csv['File'].apply(lambda x: os.path.basename(str(x)).rsplit('.', 1)[0] + ".mp3")
+                                                # 🔥 GEʍlNEʍ Hack: CSVの元の名前(260801_001.wav)から、_hhmm付きのMP3を動的に探し出す
+                                                def match_mp3_name(wav_filename):
+                                                    base_name = os.path.basename(str(wav_filename)).rsplit('.', 1)[0] # "260801_001"
+                                                    for mp3_name in available_mp3s:
+                                                        if mp3_name.startswith(base_name) and mp3_name.endswith(".mp3"):
+                                                            return mp3_name
+                                                    return base_name + ".mp3" # 見つからなければ従来のフォールバック
+                                                    
+                                                df_csv['wav_filename'] = df_csv['File'].apply(match_mp3_name)
                                                 df_csv = df_csv.drop(columns=['File'])
+                                                
                                             df_csv['location_name'] = loc_name_input
                                             df_csv['latitude'] = lat_input
                                             df_csv['longitude'] = lon_input
