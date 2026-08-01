@@ -512,7 +512,11 @@ try:
                                             
                                         if all_data:
                                             final_df = pd.concat(all_data, ignore_index=True).replace({float('nan'): None})
-                                            supabase.table("detections").insert(final_df.to_dict(orient='records')).execute()
+                                            # 🔥 GEʍlNEʍ Hack: 重複エラー(23505)を回避し、衝突時は上書きする最強のUpsert
+                                            supabase.table("detections").upsert(
+                                                final_df.to_dict(orient='records'),
+                                                on_conflict='wav_filename,start_sec,end_sec,scientific_name'
+                                            ).execute()
                                             st.success(f"🔥 {len(final_df)} 件の解析データをDBに刻み込んだぜ！")
                                             
                                     st.rerun()  # 画面をリフレッシュ
