@@ -293,6 +293,14 @@ st.markdown("""
     div[data-testid="stTabs"] [role="tab"] p {
         color: inherit !important;
     }
+    /* 🔥 タブボタン以外の装飾要素（下線・インジケーター）をすべて非表示にする */
+    div[data-testid="stTabs"] [role="tablist"] > *:not([role="tab"]) {
+        display: none !important;
+    }
+    div[data-testid="stTabs"] [role="tab"]::after,
+    div[data-testid="stTabs"] [role="tab"]::before {
+        display: none !important;
+    }
 
     /* 🔥 新デザイン: 信頼度スライダーと検索ボックスをカード風に */
     div[data-testid="stSlider"] {
