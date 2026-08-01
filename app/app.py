@@ -481,7 +481,11 @@ try:
                                         # 🔥 GEʍlNEʍ Hack: StorageのAPI仕様に合わせ、確実にファイルリストを取得
                                         try:
                                             # list() に空文字 "" (ルートパス) を渡すのが supabase-py の正しい仕様
-                                            storage_objects = supabase.storage.from_(BUCKET_NAME).list("")
+                                            # 🔥 デフォルトの取得件数上限(100件)だと、ファイルが増えたときに
+                                            #    古いmp3がリストから漏れて紐付けに失敗するため、上限を引き上げる
+                                            storage_objects = supabase.storage.from_(BUCKET_NAME).list(
+                                                "", {"limit": 5000, "sortBy": {"column": "name", "order": "asc"}}
+                                            )
                                             storage_files = [f['name'] for f in storage_objects] if storage_objects else []
                                         except Exception as e:
                                             st.error(f"Storageのリスト取得エラー: {e}") # 万が一失敗したら画面に表示させる
@@ -496,16 +500,32 @@ try:
                                             df_csv = df_csv.rename(columns={'Start (s)': 'start_sec', 'End (s)': 'end_sec', 'Scientific name': 'scientific_name', 'Common name': 'common_name', 'Confidence': 'confidence'})
                                             
                                             if 'File' in df_csv.columns:
+                                                unmatched_names = []  # 🔥 マッチ失敗した元ファイル名を集めて後で警告表示する
+
                                                 def match_mp3_name(wav_filename):
                                                     base_name = os.path.basename(str(wav_filename)).rsplit('.', 1)[0]
+                                                    # 🔥 前方10文字 (YYMMDD_nnn 形式) の一致で紐付ける。
+                                                    #    CSV側にはhhmmが付かず、mp3側にだけ_hhmmが付くため、
+                                                    #    完全一致・アンダースコア区切りに頼らずプレフィックスで判定する。
+                                                    key = base_name[:10]
                                                     for mp3_name in available_mp3s:
-                                                        # 完全にマッチングさせるために base_name + "_" で判定 (例: 260801_001_0540.mp3)
-                                                        if (mp3_name == base_name + ".mp3") or (mp3_name.startswith(base_name + "_") and mp3_name.endswith(".mp3")):
+                                                        if mp3_name[:10] == key and mp3_name.endswith(".mp3"):
                                                             return mp3_name
+                                                    unmatched_names.append(base_name)
                                                     return base_name + ".mp3"
                                                     
                                                 df_csv['wav_filename'] = df_csv['File'].apply(match_mp3_name)
                                                 df_csv = df_csv.drop(columns=['File'])
+
+                                                # 🔥 紐付けに失敗した行があれば、登録前にここで警告する
+                                                #    (放置すると閲覧時にファイル未発見エラーになるため)
+                                                if unmatched_names:
+                                                    unique_unmatched = sorted(set(unmatched_names))
+                                                    st.warning(
+                                                        "⚠️ 以下のファイルはStorage内で対応するmp3が見つからず、"
+                                                        "_hhmmなしのファイル名で登録されます（閲覧時にエラーになる可能性あり）: "
+                                                        + ", ".join(unique_unmatched)
+                                                    )
                                                 
                                             df_csv['location_name'] = loc_name_input
                                             df_csv['latitude'] = lat_input
